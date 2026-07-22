@@ -1,8 +1,4 @@
 import { Injectable, BadRequestException } from '@nestjs/common';
-import * as tls from 'tls';
-import * as dns from 'dns/promises';
-import axios from 'axios';
-  import { Injectable, BadRequestException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import * as tls from 'tls';
 import * as dns from 'dns/promises';
@@ -35,12 +31,14 @@ export interface ScanResponseDto {
   ssl: SslResult;
   headers: SecurityHeaderResult[];
   dns: DnsSecurityResult;
-  scannedAt: string;
+  scannedAt: Date | string;
 }
 
 @Injectable()
 export class ScanService {
-  async scanUrl(rawUrl: string): Promise<ScanResponseDto> {
+  constructor(private prisma: PrismaService) {}
+
+  async scanUrl(rawUrl: string) {
     const formattedUrl = this.normalizeUrl(rawUrl);
     let hostname: string;
 
@@ -58,15 +56,26 @@ export class ScanService {
 
     const { score, grade } = this.calculateScore(sslResult, headersResult, dnsResult);
 
-    return {
-      targetUrl: formattedUrl,
-      score,
-      grade,
-      ssl: sslResult,
-      headers: headersResult,
-      dns: dnsResult,
-      scannedAt: new Date().toISOString(),
-    };
+    // Save scan result in DB
+    const savedScan = await this.prisma.scanHistory.create({
+      data: {
+        targetUrl: formattedUrl,
+        score,
+        grade,
+        ssl: JSON.parse(JSON.stringify(sslResult)),
+        headers: JSON.parse(JSON.stringify(headersResult)),
+        dns: JSON.parse(JSON.stringify(dnsResult)),
+      },
+    });
+
+    return savedScan;
+  }
+
+  async getHistory() {
+    return this.prisma.scanHistory.findMany({
+      orderBy: { scannedAt: 'desc' },
+      take: 10, // Latest 10 scans
+    });
   }
 
   private normalizeUrl(url: string): string {
@@ -160,23 +169,21 @@ export class ScanService {
     let dmarcRecord: string | null = null;
 
     try {
-      // Check SPF Record
       const txtRecords = await dns.resolveTxt(hostname);
       const flatTxt = txtRecords.map((r) => r.join(''));
       const spf = flatTxt.find((r) => r.startsWith('v=spf1'));
       if (spf) spfRecord = spf;
     } catch {
-      // SPF Record Missing or Query Failed
+      // SPF Record Missing
     }
 
     try {
-      // Check DMARC Record
       const dmarcTxt = await dns.resolveTxt(`_dmarc.${hostname}`);
       const flatDmarc = dmarcTxt.map((r) => r.join(''));
       const dmarc = flatDmarc.find((r) => r.startsWith('v=DMARC1'));
       if (dmarc) dmarcRecord = dmarc;
     } catch {
-      // DMARC Record Missing or Query Failed
+      // DMARC Record Missing
     }
 
     return {
@@ -188,14 +195,11 @@ export class ScanService {
   private calculateScore(ssl: SslResult, headers: SecurityHeaderResult[], dnsRes: DnsSecurityResult) {
     let total = 0;
 
-    // SSL Score (Max 30)
     if (ssl.valid) total += 30;
 
-    // Headers Score (Max 50)
     const headerScoreSum = headers.reduce((acc, curr) => acc + (curr.present ? 8 : 0), 0);
     total += headerScoreSum;
 
-    // DNS Security Score (Max 20)
     if (dnsRes.spf.present) total += 10;
     if (dnsRes.dmarc.present) total += 10;
 
@@ -208,52 +212,4 @@ export class ScanService {
 
     return { score: total, grade };
   }
-// Interfaces... (احتفظ بنفس الـ Interfaces السابقة)
-
-@Injectable()
-export class ScanService {
-  constructor(private prisma: PrismaService) {}
-
-  async scanUrl(rawUrl: string) {
-    const formattedUrl = this.normalizeUrl(rawUrl);
-    let hostname: string;
-
-    try {
-      hostname = new URL(formattedUrl).hostname;
-    } catch {
-      throw new BadRequestException('Invalid URL provided');
-    }
-
-    const [sslResult, headersResult, dnsResult] = await Promise.all([
-      this.checkSsl(hostname),
-      this.checkHeaders(formattedUrl),
-      this.checkDnsSecurity(hostname),
-    ]);
-
-    const { score, grade } = this.calculateScore(sslResult, headersResult, dnsResult);
-
-    // Save scan result in DB
-    const savedScan = await this.prisma.scanHistory.create({
-      data: {
-        targetUrl: formattedUrl,
-        score,
-        grade,
-        ssl: JSON.parse(JSON.stringify(sslResult)),
-        headers: JSON.parse(JSON.stringify(headersResult)),
-        dns: JSON.parse(JSON.stringify(dnsResult)),
-      },
-    });
-
-    return savedScan;
-  }
-
-  async getHistory() {
-    return this.prisma.scanHistory.findMany({
-      orderBy: { scannedAt: 'desc' },
-      take: 10, // Latest 10 scans
-    });
-  }
-
-  // (ضع باقي الميثودز المساعدة: normalizeUrl, checkSsl, checkHeaders, checkDnsSecurity, calculateScore كما هي)
-}
 }
