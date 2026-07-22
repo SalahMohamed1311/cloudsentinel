@@ -78,20 +78,30 @@ export default function Home() {
     fetchHistory();
   }, []);
 
-  const handleDownloadPdf = () => {
-    const element = document.getElementById('scan-report');
-    if (!element) return;
+const handleDownloadPdf = () => {
+  const element = document.getElementById("scan-report");
+  if (!element) return;
 
-    const opt = {
+  html2pdf()
+    .set({
       margin: 0.5,
-      filename: `CloudSentinel_Report_${result?.targetUrl.replace(/https?:\/\//, '')}.pdf`,
-      image: { type: 'jpeg' as const, quality: 0.98 },
-      html2canvas: { scale: 2 },
-      jsPDF: { unit: 'in', format: 'letter', orientation: 'portrait' },
-    };
-
-    html2pdf().set(opt).from(element).save();
-  };
+      filename: `CloudSentinel_Report_${result?.targetUrl.replace(/https?:\/\//, "")}.pdf`,
+      image: {
+        type: "jpeg",
+        quality: 0.98,
+      },
+      html2canvas: {
+        scale: 2,
+      },
+      jsPDF: {
+        unit: "in",
+        format: "letter",
+        orientation: "portrait",
+      },
+    } as any)
+    .from(element)
+    .save();
+};
 
   const handleScan = async (e: React.FormEvent) => {
     e.preventDefault();
