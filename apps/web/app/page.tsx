@@ -62,6 +62,7 @@ export default function Home() {
   const [history, setHistory] = useState<ScanResponse[]>([]);
   const [error, setError] = useState<string | null>(null);
 
+  // 👈 تم تعديل البورت إلى 3001 (NestJS API)
   const fetchHistory = async () => {
     try {
       const res = await fetch('http://localhost:3001/scan/history');
@@ -78,30 +79,28 @@ export default function Home() {
     fetchHistory();
   }, []);
 
-const handleDownloadPdf = () => {
-  const element = document.getElementById("scan-report");
-  if (!element) return;
-
-  html2pdf()
-    .set({
+  const handleDownloadPdf = () => {
+    const element = document.getElementById('scan-report');
+    if (!element) return;
+    const opt = {
       margin: 0.5,
-      filename: `CloudSentinel_Report_${result?.targetUrl.replace(/https?:\/\//, "")}.pdf`,
+      filename: `CloudSentinel_Report_${result?.targetUrl.replace(/https?:\/\//, '')}.pdf`,
       image: {
-        type: "jpeg",
+        type: 'jpeg' as const,
         quality: 0.98,
       },
       html2canvas: {
         scale: 2,
       },
       jsPDF: {
-        unit: "in",
-        format: "letter",
-        orientation: "portrait",
+        unit: 'in' as const,
+        format: 'letter' as const,
+        orientation: 'portrait' as const,
       },
-    } as any)
-    .from(element)
-    .save();
-};
+    };
+
+    html2pdf().set(opt).from(element).save();
+  };
 
   const handleScan = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -112,6 +111,7 @@ const handleDownloadPdf = () => {
     setResult(null);
 
     try {
+      // 👈 تم تعديل البورت إلى 3001 (NestJS API)
       const res = await fetch('http://localhost:3001/scan', {
         method: 'POST',
         headers: {
@@ -146,16 +146,6 @@ const handleDownloadPdf = () => {
         return 'bg-yellow-500/20 text-yellow-400 border-yellow-500/30 shadow-yellow-500/20';
       default:
         return 'bg-red-500/20 text-red-400 border-red-500/30 shadow-red-500/20';
-    }
-  };
-
-  const getGradeBg = (grade: string) => {
-    switch (grade) {
-      case 'A+': return 'from-emerald-500 to-green-500';
-      case 'A': return 'from-green-500 to-emerald-500';
-      case 'B': return 'from-blue-500 to-indigo-500';
-      case 'C': return 'from-yellow-500 to-amber-500';
-      default: return 'from-red-500 to-rose-500';
     }
   };
 
@@ -227,7 +217,7 @@ const handleDownloadPdf = () => {
         {/* Results Section */}
         {result && (
           <section id="scan-report" className="w-full space-y-6 animate-fade-in">
-            {/* Header Summary - Enhanced */}
+            {/* Header Summary */}
             <div className="bg-white/5 backdrop-blur-xl border border-white/10 rounded-3xl p-6 md:p-8 shadow-2xl shadow-blue-500/5">
               <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                 {/* Left - Target Info */}
@@ -316,7 +306,7 @@ const handleDownloadPdf = () => {
               </div>
             </div>
 
-            {/* SSL Status Card - Compact */}
+            {/* SSL Status Card */}
             <div className="bg-white/5 backdrop-blur-xl border border-white/10 rounded-3xl p-6 md:p-8 shadow-2xl shadow-blue-500/5">
               <div className="flex items-center gap-3 mb-6">
                 <div className="p-2 bg-blue-500/10 rounded-xl">
@@ -347,7 +337,7 @@ const handleDownloadPdf = () => {
               </div>
             </div>
 
-            {/* Security Headers Card - Improved */}
+            {/* Security Headers Card */}
             <div className="bg-white/5 backdrop-blur-xl border border-white/10 rounded-3xl p-6 md:p-8 shadow-2xl shadow-blue-500/5">
               <div className="flex items-center gap-3 mb-6">
                 <div className="p-2 bg-blue-500/10 rounded-xl">
@@ -404,7 +394,7 @@ const handleDownloadPdf = () => {
               </div>
             </div>
 
-            {/* DNS Email Security Card - Improved */}
+            {/* DNS Email Security Card */}
             <div className="bg-white/5 backdrop-blur-xl border border-white/10 rounded-3xl p-6 md:p-8 shadow-2xl shadow-blue-500/5">
               <div className="flex items-center gap-3 mb-6">
                 <div className="p-2 bg-blue-500/10 rounded-xl">
@@ -460,7 +450,7 @@ const handleDownloadPdf = () => {
           </section>
         )}
 
-        {/* History Table Section - Improved */}
+        {/* History Table Section */}
         {history.length > 0 && (
           <section className="w-full mt-8 bg-white/5 backdrop-blur-xl border border-white/10 rounded-3xl p-6 md:p-8 shadow-2xl shadow-blue-500/5">
             <div className="flex items-center gap-3 mb-6">
