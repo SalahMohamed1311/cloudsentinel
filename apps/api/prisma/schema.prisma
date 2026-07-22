@@ -1,0 +1,19 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model ScanHistory {
+  id        String   @id @default(uuid())
+  targetUrl String
+  score     Int
+  grade     String
+  ssl       Json
+  headers   Json
+  dns       Json
+  scannedAt DateTime @default(now())
+}
