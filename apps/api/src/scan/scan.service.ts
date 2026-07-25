@@ -84,23 +84,6 @@ export class ScanService {
       dnsResult.dmarc.found,
     );
 
-    // 4.5 توحيد شكل الـ DNS والـ Fingerprint عشان يتوافق مع الـ Frontend (present/record)
-    const normalizedDns = {
-      spf: { present: dnsResult.spf.found, record: dnsResult.spf.record ?? null },
-      dmarc: { present: dnsResult.dmarc.found, record: dnsResult.dmarc.record ?? null },
-      dkim: {
-        present: dnsResult.dkim.found,
-        record: dnsResult.dkim.selector ? `selector: ${dnsResult.dkim.selector}` : null,
-      },
-      dnssec: { present: dnsResult.dnssec.enabled, record: null },
-    };
-
-    const normalizedFingerprint = {
-      cloudProvider: fingerprintResult.cloudProvider ?? null,
-      waf: fingerprintResult.waf ?? null,
-      cms: cmsResult.cms ?? cmsResult.framework ?? null,
-    };
-
     // 5. تجهيز كائن النتائج النهائي
     const scanResultData = {
       targetUrl: formattedUrl,
@@ -109,8 +92,8 @@ export class ScanService {
       grade,
       ssl: sslResult,
       headers: headersResult,
-      dns: normalizedDns,
-      fingerprint: normalizedFingerprint,
+      dns: dnsResult,
+      fingerprint: fingerprintResult,
       cms: cmsResult,
       ports: portScanResult,
       recommendations,
@@ -125,7 +108,7 @@ export class ScanService {
         grade,
         ssl: JSON.parse(JSON.stringify(sslResult)),
         headers: JSON.parse(JSON.stringify(headersResult)),
-        dns: JSON.parse(JSON.stringify(normalizedDns)),
+        dns: JSON.parse(JSON.stringify(dnsResult)),
       },
     });
 
@@ -137,10 +120,18 @@ export class ScanService {
   }
 
   async getHistory() {
-    return this.prisma.scanHistory.findMany({
+    const history = await this.prisma.scanHistory.findMany({
       orderBy: { scannedAt: 'desc' },
       take: 10,
     });
+
+    // تنظيف وتوحيد شكل البيانات الراجعة من الداتابيز لتفادي أخطاء الـ Frontend
+    return history.map((scan) => ({
+      ...scan,
+      headers: Array.isArray(scan.headers) ? scan.headers : (scan.headers as any)?.data || [],
+      ssl: scan.ssl || {},
+      dns: scan.dns || {},
+    }));
   }
 
   // دالة مساعدة لكشف العناوين الداخلية والـ Loopback مباشرة
