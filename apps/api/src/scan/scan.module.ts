@@ -16,6 +16,7 @@ import { RecommendationsService } from './recommendations.service';
     CmsDetectionService,
     PortScanService,
     RecommendationsService,
+    
   ],
   exports: [
     ScanService,
@@ -24,6 +25,7 @@ import { RecommendationsService } from './recommendations.service';
     CmsDetectionService,
     PortScanService,
     RecommendationsService,
+    
   ],
 })
 export class ScanModule {}

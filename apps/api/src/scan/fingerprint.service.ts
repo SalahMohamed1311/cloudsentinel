@@ -114,6 +114,7 @@ export class FingerprintService {
   private detectWaf(headers: Record<string, string>, cnames: string[]): string | null {
     const cnameStr = cnames.join(' ').toLowerCase();
     const serverHeader = headers['server']?.toLowerCase() || '';
+    const setCookie = headers['set-cookie']?.toLowerCase() || '';
 
     // Cloudflare WAF
     if (headers['cf-ray'] || serverHeader.includes('cloudflare')) {
@@ -139,6 +140,36 @@ export class FingerprintService {
     // Imperva / Incapsula
     if (headers['x-iinfo'] || headers['x-cdn']?.includes('incapsula')) {
       return 'Imperva / Incapsula';
+    }
+
+    // F5 BIG-IP ASM (بيحط كوكيز بادئة بـ TS متبوعة بهيكس)
+    if (serverHeader.includes('bigip') || /\bts[0-9a-f]{6,}=/i.test(setCookie)) {
+      return 'F5 BIG-IP ASM';
+    }
+
+    // Barracuda WAF
+    if (serverHeader.includes('barracuda') || setCookie.includes('barra_counter_session')) {
+      return 'Barracuda WAF';
+    }
+
+    // Fortinet FortiWeb
+    if (serverHeader.includes('fortiweb') || setCookie.includes('fortiwafsid')) {
+      return 'Fortinet FortiWeb';
+    }
+
+    // Radware AppWall
+    if (setCookie.includes('appwallvid') || headers['x-sl-compstate']) {
+      return 'Radware AppWall';
+    }
+
+    // StackPath WAF
+    if (serverHeader.includes('stackpath')) {
+      return 'StackPath WAF';
+    }
+
+    // DDoS-Guard
+    if (serverHeader.includes('ddos-guard')) {
+      return 'DDoS-Guard';
     }
 
     return null;

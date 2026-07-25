@@ -1,8 +1,10 @@
 'use client';
 
 export const dynamic = 'force-dynamic';
-
+import ScoreChart from '../components/ScoreChart';
+import { useUser, SignInButton, UserButton } from '@clerk/nextjs';
 import { useState, useEffect, useRef } from 'react';
+import axios from 'axios';
 import {
   Shield,
   Lock,
@@ -30,7 +32,6 @@ import {
   Sparkles,
   Radio,
 } from 'lucide-react';
-
 /* ───────── types ───────── */
 interface SslResult {
   valid: boolean;
@@ -157,13 +158,7 @@ function ParticleBackground() {
 }
 
 /* ───────── Status Badge ───────── */
-function StatusBadge({
-  active,
-  label,
-}: {
-  active: boolean;
-  label: string;
-}) {
+function StatusBadge({ active, label }: { active: boolean; label: string }) {
   return (
     <div className="flex items-center gap-2">
       <div className="relative">
@@ -179,7 +174,7 @@ function StatusBadge({
   );
 }
 
-/* ───────── Detection Pill (Cloud / WAF / CMS) ───────── */
+/* ───────── Detection Pill ───────── */
 function DetectionPill({
   icon: Icon,
   label,
@@ -205,15 +200,133 @@ function DetectionPill({
 }
 
 /* ═══════════════════════════════════════ */
+/*  DASHBOARD COMPONENT                   */
+/* ═══════════════════════════════════════ */
+function DashboardPage() {
+  const { user } = useUser();
+  const [websites, setWebsites] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    async function fetchWebsites() {
+      if (!user?.id) {
+        setLoading(false);
+        return;
+      }
+      try {
+        const res = await axios.get(
+          `${process.env.NEXT_PUBLIC_API_URL}/scan/history`
+        );
+        const historyData = res.data;
+        const websitesMap = new Map();
+        historyData.forEach((scan: any) => {
+          if (!websitesMap.has(scan.targetUrl)) {
+            websitesMap.set(scan.targetUrl, {
+              id: scan.id,
+              url: scan.targetUrl,
+              scans: []
+            });
+          }
+          websitesMap.get(scan.targetUrl).scans.push({
+            scannedAt: scan.scannedAt,
+            score: scan.score
+          });
+        });
+        const websitesArray = Array.from(websitesMap.values());
+        websitesArray.forEach(site => {
+          site.scans.sort((a: any, b: any) => 
+            new Date(a.scannedAt).getTime() - new Date(b.scannedAt).getTime()
+          );
+        });
+        setWebsites(websitesArray);
+      } catch (err) {
+        console.error('Error fetching websites:', err);
+      } finally {
+        setLoading(false);
+      }
+    }
+    fetchWebsites();
+  }, [user]);
+
+  if (!user) {
+    return (
+      <div className="text-center py-12">
+        <p className="text-slate-400">Please sign in to view your dashboard</p>
+      </div>
+    );
+  }
+
+  if (loading) {
+    return (
+      <div className="flex justify-center items-center py-12">
+        <div className="w-8 h-8 border-2 border-blue-500/30 border-t-blue-500 rounded-full animate-spin" />
+      </div>
+    );
+  }
+
+  if (websites.length === 0) {
+    return (
+      <div className="text-center py-12">
+        <p className="text-slate-400">No websites scanned yet. Start scanning to see results here!</p>
+      </div>
+    );
+  }
+
+  return (
+    <section className="mt-12 glass-strong rounded-3xl p-8 hover-glow animate-fade-in-up">
+      <div className="flex items-center gap-3 mb-8">
+        <div className="w-10 h-10 bg-gradient-to-br from-cyan-500/20 to-blue-500/20 rounded-xl flex items-center justify-center">
+          <BarChart3 className="w-5 h-5 text-cyan-400" />
+        </div>
+        <div>
+          <h3 className="text-lg font-bold text-white">لوحة تحكم المواقع</h3>
+          <p className="text-xs text-slate-500">تحليل أداء وأمان المواقع الممسوحة</p>
+        </div>
+        <span className="ml-auto text-xs text-slate-400 glass px-3 py-1.5 rounded-full">
+          {websites.length} مواقع
+        </span>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        {websites.map((site) => (
+          <div
+            key={site.id}
+            className="p-6 rounded-2xl bg-white/5 border border-white/10 hover:border-white/20 transition-all"
+          >
+            <h2 className="text-lg font-semibold text-white mb-2 truncate">
+              {site.url}
+            </h2>
+            <p className="text-xs text-slate-500 mb-4">
+              عدد الفحوصات: {site.scans.length}
+            </p>
+            <div className="h-48">
+              {site.scans && site.scans.length > 0 ? (
+                <ScoreChart data={site.scans} />
+              ) : (
+                <div className="flex items-center justify-center h-full text-slate-500 text-sm">
+                  لا توجد بيانات كافية
+                </div>
+              )}
+            </div>
+          </div>
+        ))}
+      </div>
+    </section>
+  );
+}
+
+/* ═══════════════════════════════════════ */
 /*  MAIN COMPONENT                        */
 /* ═══════════════════════════════════════ */
 export default function Home() {
+  const { isSignedIn } = useUser();
   const [url, setUrl] = useState('');
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<ScanResponse | null>(null);
   const [history, setHistory] = useState<ScanResponse[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [scanProgress, setScanProgress] = useState(0);
+  const [showDashboard, setShowDashboard] = useState(false);
   const resultRef = useRef<HTMLDivElement>(null);
 
   /* ── history ── */
@@ -351,18 +464,44 @@ export default function Home() {
               </p>
             </div>
           </div>
-          <div className="hidden md:flex items-center gap-6">
-            <div className="flex items-center gap-2 text-xs text-slate-400">
-              <Activity className="w-3.5 h-3.5 text-emerald-400" />
-              <span>System Active</span>
+          <div className="flex items-center gap-6">
+            <div className="hidden md:flex items-center gap-6">
+              <div className="flex items-center gap-2 text-xs text-slate-400">
+                <Activity className="w-3.5 h-3.5 text-emerald-400" />
+                <span>System Active</span>
+              </div>
+              <div className="w-px h-4 bg-slate-700" />
+              <div className="flex items-center gap-2 text-xs text-slate-400">
+                <Radio className="w-3.5 h-3.5 text-blue-400 animate-pulse" />
+                <span>{history.length} Scans</span>
+              </div>
             </div>
-            <div className="w-px h-4 bg-slate-700" />
-            <div className="flex items-center gap-2 text-xs text-slate-400">
-              <Radio className="w-3.5 h-3.5 text-blue-400 animate-pulse" />
-              <span>{history.length} Scans</span>
+
+            {/* أزرار المصادقة عبر Clerk */}
+            <div className="flex items-center gap-3">
+              {isSignedIn ? (
+                <>
+                  <button
+                    onClick={() => setShowDashboard(!showDashboard)}
+                    className="text-xs font-semibold text-slate-300 hover:text-white transition px-3 py-1.5 rounded-lg bg-white/5 hover:bg-white/10"
+                  >
+                    {showDashboard ? 'إخفاء' : 'لوحة التحكم'}
+                  </button>
+                  <UserButton afterSignOutUrl="/" />
+                </>
+              ) : (
+                <SignInButton mode="modal">
+                  <button className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white text-xs font-bold px-4 py-2 rounded-xl transition shadow-md shadow-blue-600/20">
+                    تسجيل الدخول
+                  </button>
+                </SignInButton>
+              )}
             </div>
           </div>
         </nav>
+
+        {/* ── Dashboard ── */}
+        {showDashboard && isSignedIn && <DashboardPage />}
 
         {/* ── Hero ── */}
         <header className="text-center mb-16 animate-fade-in-up">
@@ -631,11 +770,10 @@ export default function Home() {
                   </p>
                 </div>
                 <span
-                  className={`ml-auto text-xs font-bold px-3 py-1.5 rounded-full ${
-                    result.ssl?.valid
-                      ? 'bg-emerald-500/20 text-emerald-400'
-                      : 'bg-red-500/20 text-red-400'
-                  }`}
+                  className={`ml-auto text-xs font-bold px-3 py-1.5 rounded-full ${result.ssl?.valid
+                    ? 'bg-emerald-500/20 text-emerald-400'
+                    : 'bg-red-500/20 text-red-400'
+                    }`}
                 >
                   {result.ssl?.valid ? '✓ Trusted' : '✗ Invalid'}
                 </span>
@@ -691,11 +829,10 @@ export default function Home() {
                         </span>
                       </div>
                       <p
-                        className={`font-bold text-sm truncate ${
-                          item.label === 'Certificate Status'
-                            ? item.color
-                            : 'text-white'
-                        }`}
+                        className={`font-bold text-sm truncate ${item.label === 'Certificate Status'
+                          ? item.color
+                          : 'text-white'
+                          }`}
                       >
                         {item.value}
                       </p>
@@ -800,7 +937,7 @@ export default function Home() {
                     {presentHeadersCount}
                   </span>
                   <span className="text-sm text-slate-500">
-                    / {safeHeaders.length}
+                    /{safeHeaders.length}
                   </span>
                   <div className="w-20 h-2 bg-white/5 rounded-full overflow-hidden ml-2">
                     <div
@@ -825,11 +962,10 @@ export default function Home() {
                   return (
                     <div
                       key={headerName || idx}
-                      className={`rounded-2xl p-5 border transition-all hover-lift opacity-0 animate-fade-in-up ${
-                        isPresent
-                          ? 'bg-emerald-500/5 border-emerald-500/10 hover:border-emerald-500/30'
-                          : 'bg-red-500/5 border-red-500/10 hover:border-red-500/30'
-                      }`}
+                      className={`rounded-2xl p-5 border transition-all hover-lift opacity-0 animate-fade-in-up ${isPresent
+                        ? 'bg-emerald-500/5 border-emerald-500/10 hover:border-emerald-500/30'
+                        : 'bg-red-500/5 border-red-500/10 hover:border-red-500/30'
+                        }`}
                       style={{
                         animationDelay: `${idx * 0.05}s`,
                         animationFillMode: 'forwards',
@@ -863,11 +999,10 @@ export default function Home() {
                           )}
                         </div>
                         <span
-                          className={`text-xs font-bold px-4 py-2 rounded-xl w-fit flex-shrink-0 ${
-                            isPresent
-                              ? 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/20'
-                              : 'bg-red-500/15 text-red-400 border border-red-500/20'
-                          }`}
+                          className={`text-xs font-bold px-4 py-2 rounded-xl w-fit flex-shrink-0 ${isPresent
+                            ? 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/20'
+                            : 'bg-red-500/15 text-red-400 border border-red-500/20'
+                            }`}
                         >
                           {isPresent ? 'Present' : 'Missing'}
                         </span>
@@ -921,11 +1056,10 @@ export default function Home() {
                   return (
                     <div
                       key={idx}
-                      className={`rounded-2xl p-6 border transition hover-lift ${
-                        isPresent
-                          ? 'bg-emerald-500/5 border-emerald-500/10'
-                          : 'bg-red-500/5 border-red-500/10'
-                      }`}
+                      className={`rounded-2xl p-6 border transition hover-lift ${isPresent
+                        ? 'bg-emerald-500/5 border-emerald-500/10'
+                        : 'bg-red-500/5 border-red-500/10'
+                        }`}
                     >
                       <div className="flex justify-between items-start mb-4">
                         <div>
@@ -937,11 +1071,10 @@ export default function Home() {
                           </p>
                         </div>
                         <span
-                          className={`text-xs font-bold px-3 py-1.5 rounded-full ${
-                            isPresent
-                              ? 'bg-emerald-500/20 text-emerald-400'
-                              : 'bg-red-500/20 text-red-400'
-                          }`}
+                          className={`text-xs font-bold px-3 py-1.5 rounded-full ${isPresent
+                            ? 'bg-emerald-500/20 text-emerald-400'
+                            : 'bg-red-500/20 text-red-400'
+                            }`}
                         >
                           {isPresent ? '✓ Found' : '✗ Missing'}
                         </span>

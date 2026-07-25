@@ -14,6 +14,7 @@ export interface SslResult {
   validTo: string;
   daysRemaining: number;
   tlsVersion: string;
+  subdomains: string[];
 }
 
 export interface SecurityHeaderResult {
@@ -34,7 +35,7 @@ export class ScanService {
     private readonly recommendationsService: RecommendationsService,
   ) {}
 
-  async scanUrl(rawUrl: string) {
+  async scanUrl(rawUrl: string, clerkId?: string, email?: string, name?: string) {
     const formattedUrl = this.normalizeUrl(rawUrl);
     let hostname: string;
 
@@ -84,7 +85,7 @@ export class ScanService {
       dnsResult.dmarc.found,
     );
 
-    // 4.5 توحيد شكل الـ DNS والـ Fingerprint عشان يتوافق مع الـ Frontend (present/record)
+    // 4.5 توحيد شكل الـ DNS والـ Fingerprint عشان يتوافق مع الـ Frontend
     const normalizedDns = {
       spf: { present: dnsResult.spf.found, record: dnsResult.spf.record ?? null },
       dmarc: { present: dnsResult.dmarc.found, record: dnsResult.dmarc.record ?? null },
@@ -117,7 +118,26 @@ export class ScanService {
       scannedAt: new Date(),
     };
 
-    // 6. حفظ النتيجة في قاعدة البيانات عبر Prisma
+    let websiteId: string | null = null;
+
+    // 6. لو المستخدم مسجل دخول، نقوم بحفظ الموقع وربطه بـ ScanHistory تلقائياً (متطلبات الأسبوع 3)
+    if (clerkId) {
+      const user = await this.prisma.user.upsert({
+        where: { clerkId },
+        update: {},
+        create: { clerkId, email: email || `${clerkId}@clerk.user`, name },
+      });
+
+      const website = await this.prisma.website.upsert({
+        where: { userId_url: { userId: user.id, url: formattedUrl } },
+        update: {},
+        create: { url: formattedUrl, userId: user.id },
+      });
+
+      websiteId = website.id;
+    }
+
+    // 7. حفظ النتيجة في قاعدة البيانات عبر Prisma
     const savedScan = await this.prisma.scanHistory.create({
       data: {
         targetUrl: formattedUrl,
@@ -126,14 +146,70 @@ export class ScanService {
         ssl: JSON.parse(JSON.stringify(sslResult)),
         headers: JSON.parse(JSON.stringify(headersResult)),
         dns: JSON.parse(JSON.stringify(normalizedDns)),
+        recommendations: JSON.parse(JSON.stringify(recommendations)),
+        websiteId: websiteId,
       },
     });
 
-    // إرجاع النتيجة المكتملة للـ API Response
     return {
       id: savedScan.id,
       ...scanResultData,
     };
+  }
+
+  async saveScanResult(data: {
+    clerkId: string;
+    email: string;
+    name?: string;
+    url: string;
+    scanResult: any;
+  }) {
+    const { clerkId, email, name, url, scanResult } = data;
+
+    const user = await this.prisma.user.upsert({
+      where: { clerkId },
+      update: {},
+      create: { clerkId, email, name },
+    });
+
+    const website = await this.prisma.website.upsert({
+      where: { userId_url: { userId: user.id, url } },
+      update: {},
+      create: { url, userId: user.id },
+    });
+
+    const history = await this.prisma.scanHistory.create({
+      data: {
+        targetUrl: url,
+        score: scanResult.score,
+        grade: scanResult.grade,
+        ssl: scanResult.ssl || {},
+        headers: scanResult.headers || {},
+        dns: scanResult.dns || {},
+        fingerprint: scanResult.fingerprint || null,
+        recommendations: scanResult.recommendations || null,
+        websiteId: website.id,
+      },
+    });
+
+    return { user, website, history };
+  }
+
+  async getUserWebsites(clerkId: string) {
+    const user = await this.prisma.user.findUnique({
+      where: { clerkId },
+      include: {
+        websites: {
+          include: {
+            scans: {
+              orderBy: { scannedAt: 'desc' },
+            },
+          },
+        },
+      },
+    });
+
+    return user?.websites || [];
   }
 
   async getHistory() {
@@ -143,7 +219,6 @@ export class ScanService {
     });
   }
 
-  // دالة مساعدة لكشف العناوين الداخلية والـ Loopback مباشرة
   private isPrivateIp(ipOrHost: string): boolean {
     const cleanHost = ipOrHost.toLowerCase().trim();
     return (
@@ -177,6 +252,7 @@ export class ScanService {
             validTo: 'N/A',
             daysRemaining: 0,
             tlsVersion: 'N/A',
+            subdomains: [],
           });
           socket.end();
           return;
@@ -193,17 +269,18 @@ export class ScanService {
           validTo: cert.valid_to,
           daysRemaining,
           tlsVersion: socket.getProtocol() || 'Unknown',
+          subdomains: [],
         });
         socket.end();
       });
 
       socket.setTimeout(5000, () => {
         socket.destroy();
-        resolve({ valid: false, issuer: 'N/A', validTo: 'N/A', daysRemaining: 0, tlsVersion: 'Timeout' });
+        resolve({ valid: false, issuer: 'N/A', validTo: 'N/A', daysRemaining: 0, tlsVersion: 'Timeout', subdomains: [] });
       });
 
       socket.on('error', () => {
-        resolve({ valid: false, issuer: 'N/A', validTo: 'N/A', daysRemaining: 0, tlsVersion: 'Error' });
+        resolve({ valid: false, issuer: 'N/A', validTo: 'N/A', daysRemaining: 0, tlsVersion: 'Error', subdomains: [] });
       });
     });
   }
