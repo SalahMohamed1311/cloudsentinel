@@ -11,29 +11,25 @@ export class CmsDetectionService {
   private readonly logger = new Logger(CmsDetectionService.name);
 
   async detect(url: string): Promise<CmsDetectionResult> {
-  try {
-    const response = await axios.get(url, {
-      timeout: 5000,
-      validateStatus: () => true,
-      headers: { 'User-Agent': 'CloudSentinel-Scanner/1.0' },
-    });
+    try {
+      const response = await axios.get(url, {
+        timeout: 5000,
+        validateStatus: () => true,
+        headers: { 'User-Agent': 'CloudSentinel-Scanner/1.0' },
+      });
 
-    const html = typeof response.data === 'string' ? response.data : '';
+      const html = typeof response.data === 'string' ? response.data : '';
+      const headers = response.headers;
 
-    // 🔍 Debug مؤقت
-    this.logger.debug(`Status: ${response.status}, HTML length: ${html.length}`);
-    this.logger.debug(`Contains wp-content: ${html.includes('wp-content')}`);
-
-    const headers = response.headers;
-    return {
-      cms: this.detectCms(html),
-      framework: this.detectFramework(html, headers),
-    };
-  } catch (error) {
-    this.logger.debug(`CMS detection failed for ${url}: ${error.message}`);
-    return { cms: null, framework: null };
+      return {
+        cms: this.detectCms(html),
+        framework: this.detectFramework(html, headers),
+      };
+    } catch (error) {
+      this.logger.debug(`CMS detection failed for ${url}: ${error.message}`);
+      return { cms: null, framework: null };
+    }
   }
-}
 
   private detectCms(html: string): string | null {
     if (/wp-content|wp-includes|generator" content="wordpress/i.test(html)) {
