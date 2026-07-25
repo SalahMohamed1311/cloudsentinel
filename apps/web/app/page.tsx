@@ -75,14 +75,15 @@ interface ScanResponse {
 
 /* ───────── Score Circle Component ───────── */
 function ScoreCircle({ score, grade }: { score: number; grade: string }) {
+  const safeScore = score ?? 0;
   const radius = 58;
   const circumference = 2 * Math.PI * radius;
-  const offset = circumference - (score / 100) * circumference;
+  const offset = circumference - (safeScore / 100) * circumference;
 
   const getGradientId = () => {
-    if (score >= 90) return 'emerald';
-    if (score >= 70) return 'blue';
-    if (score >= 50) return 'yellow';
+    if (safeScore >= 90) return 'emerald';
+    if (safeScore >= 70) return 'blue';
+    if (safeScore >= 50) return 'yellow';
     return 'red';
   };
 
@@ -119,7 +120,7 @@ function ScoreCircle({ score, grade }: { score: number; grade: string }) {
         />
       </svg>
       <div className="absolute inset-0 flex flex-col items-center justify-center">
-        <span className="text-3xl font-black text-white">{score}</span>
+        <span className="text-3xl font-black text-white">{safeScore}</span>
         <span className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">
           / 100
         </span>
@@ -132,16 +133,13 @@ function ScoreCircle({ score, grade }: { score: number; grade: string }) {
 function ParticleBackground() {
   return (
     <div className="fixed inset-0 overflow-hidden pointer-events-none">
-      {/* Main Gradient Orbs */}
       <div className="absolute -top-40 -right-40 w-[500px] h-[500px] bg-blue-600/8 rounded-full blur-[120px] animate-float" />
       <div className="absolute -bottom-60 -left-40 w-[600px] h-[600px] bg-purple-600/8 rounded-full blur-[120px] animate-float delay-1000" />
       <div className="absolute top-1/3 right-1/4 w-[400px] h-[400px] bg-cyan-600/5 rounded-full blur-[100px] animate-float delay-500" />
       <div className="absolute bottom-1/4 left-1/3 w-[300px] h-[300px] bg-indigo-600/5 rounded-full blur-[80px] animate-float delay-700" />
 
-      {/* Grid Pattern */}
       <div className="absolute inset-0 grid-pattern opacity-50" />
 
-      {/* Floating Dots */}
       {[...Array(6)].map((_, i) => (
         <div
           key={i}
@@ -258,7 +256,7 @@ export default function Home() {
       html2pdf()
         .set({
           margin: 0.5,
-          filename: `CloudSentinel_${result?.targetUrl.replace(/https?:\/\//, '')}.pdf`,
+          filename: `CloudSentinel_${result?.targetUrl?.replace(/https?:\/\//, '') || 'report'}.pdf`,
           image: { type: 'jpeg' as const, quality: 0.98 },
           html2canvas: { scale: 2 },
           jsPDF: {
@@ -323,7 +321,15 @@ export default function Home() {
     return 'text-red-400';
   };
 
-  /* ═════════ JSX ═════════ */
+  // Safe Headers Extractor
+  const safeHeaders = Array.isArray(result?.headers)
+    ? result.headers
+    : (result?.headers as any)?.data || [];
+
+  const presentHeadersCount = safeHeaders.filter(
+    (h: any) => h?.present || h?.data?.present,
+  ).length;
+
   return (
     <main className="min-h-screen bg-[#030712] text-slate-100 relative">
       <ParticleBackground />
@@ -378,7 +384,6 @@ export default function Home() {
             HTTP security headers, and DNS email authentication.
           </p>
 
-          {/* Quick Stats */}
           <div className="flex flex-wrap items-center justify-center gap-8 mt-10">
             {[
               { icon: ShieldCheck, label: 'SSL Analysis', color: 'text-emerald-400' },
@@ -437,7 +442,6 @@ export default function Home() {
                 </button>
               </div>
 
-              {/* Scanning Progress */}
               {loading && (
                 <div className="space-y-2 animate-fade-in-up">
                   <div className="flex justify-between text-xs text-slate-400">
@@ -476,7 +480,6 @@ export default function Home() {
             {/* ── Score Overview ── */}
             <div className="glass-strong rounded-3xl p-8 glow-blue">
               <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-center">
-                {/* Target Info */}
                 <div className="lg:col-span-5 space-y-4">
                   <div className="flex items-center gap-2 text-slate-400 text-xs font-semibold uppercase tracking-wider">
                     <Target className="w-3.5 h-3.5" />
@@ -487,39 +490,38 @@ export default function Home() {
                   </h2>
                   <div className="flex flex-wrap gap-3">
                     <StatusBadge
-                      active={result.ssl.valid}
-                      label={result.ssl.valid ? 'SSL Valid' : 'SSL Invalid'}
+                      active={!!result.ssl?.valid}
+                      label={result.ssl?.valid ? 'SSL Valid' : 'SSL Invalid'}
                     />
                     <StatusBadge
-                      active={result.dns.spf.present && result.dns.dmarc.present}
+                      active={!!(result.dns?.spf?.present && result.dns?.dmarc?.present)}
                       label={
-                        result.dns.spf.present && result.dns.dmarc.present
+                        result.dns?.spf?.present && result.dns?.dmarc?.present
                           ? 'Email Secured'
                           : 'Email Warning'
                       }
                     />
                   </div>
 
-                  {/* Detection badges — cloud provider / WAF / CMS */}
                   {(result.fingerprint?.cloudProvider ||
                     result.fingerprint?.waf ||
                     result.fingerprint?.cms) && (
                     <div className="flex flex-wrap gap-2">
-                      {result.fingerprint.cloudProvider && (
+                      {result.fingerprint?.cloudProvider && (
                         <DetectionPill
                           icon={Server}
                           label={result.fingerprint.cloudProvider}
                           color="blue"
                         />
                       )}
-                      {result.fingerprint.waf && (
+                      {result.fingerprint?.waf && (
                         <DetectionPill
                           icon={ShieldCheck}
                           label={`${result.fingerprint.waf} WAF`}
                           color="purple"
                         />
                       )}
-                      {result.fingerprint.cms && (
+                      {result.fingerprint?.cms && (
                         <DetectionPill
                           icon={Fingerprint}
                           label={result.fingerprint.cms}
@@ -531,21 +533,19 @@ export default function Home() {
 
                   <div className="text-xs text-slate-500 flex items-center gap-2">
                     <Calendar className="w-3.5 h-3.5" />
-                    {new Date(result.scannedAt).toLocaleString()}
+                    {result.scannedAt ? new Date(result.scannedAt).toLocaleString() : 'N/A'}
                   </div>
                 </div>
 
-                {/* Score Visual */}
                 <div className="lg:col-span-4 flex justify-center">
                   <ScoreCircle score={result.score} grade={result.grade} />
                 </div>
 
-                {/* Grade + Action */}
                 <div className="lg:col-span-3 flex flex-col items-center lg:items-end gap-4">
                   <div
                     className={`border-2 text-6xl font-black px-10 py-5 rounded-3xl shadow-2xl ${getGradeColor(result.grade)}`}
                   >
-                    {result.grade}
+                    {result.grade || 'F'}
                   </div>
                   <button
                     onClick={handleDownloadPdf}
@@ -563,21 +563,21 @@ export default function Home() {
               {[
                 {
                   label: 'Headers Present',
-                  value: `${result.headers.filter((h) => h.present).length}/${result.headers.length}`,
+                  value: `${presentHeadersCount}/${safeHeaders.length}`,
                   icon: Shield,
                   color: 'from-blue-500/20 to-indigo-500/20',
                   iconColor: 'text-blue-400',
                 },
                 {
                   label: 'SSL Days Left',
-                  value: `${result.ssl.daysRemaining}`,
+                  value: `${result.ssl?.daysRemaining ?? 0}`,
                   icon: Clock,
                   color: 'from-emerald-500/20 to-cyan-500/20',
                   iconColor: 'text-emerald-400',
                 },
                 {
                   label: 'TLS Protocol',
-                  value: result.ssl.tlsVersion,
+                  value: result.ssl?.tlsVersion || 'N/A',
                   icon: Lock,
                   color: 'from-purple-500/20 to-pink-500/20',
                   iconColor: 'text-purple-400',
@@ -585,7 +585,7 @@ export default function Home() {
                 {
                   label: 'Email Security',
                   value:
-                    result.dns.spf.present && result.dns.dmarc.present
+                    result.dns?.spf?.present && result.dns?.dmarc?.present
                       ? 'Protected'
                       : 'At Risk',
                   icon: Mail,
@@ -632,12 +632,12 @@ export default function Home() {
                 </div>
                 <span
                   className={`ml-auto text-xs font-bold px-3 py-1.5 rounded-full ${
-                    result.ssl.valid
+                    result.ssl?.valid
                       ? 'bg-emerald-500/20 text-emerald-400'
                       : 'bg-red-500/20 text-red-400'
                   }`}
                 >
-                  {result.ssl.valid ? '✓ Trusted' : '✗ Invalid'}
+                  {result.ssl?.valid ? '✓ Trusted' : '✗ Invalid'}
                 </span>
               </div>
 
@@ -645,34 +645,34 @@ export default function Home() {
                 {[
                   {
                     label: 'Certificate Status',
-                    value: result.ssl.valid
+                    value: result.ssl?.valid
                       ? '✓ Valid & Trusted'
                       : '✗ Invalid',
-                    icon: result.ssl.valid ? CheckCircle : XCircle,
-                    color: result.ssl.valid
+                    icon: result.ssl?.valid ? CheckCircle : XCircle,
+                    color: result.ssl?.valid
                       ? 'text-emerald-400'
                       : 'text-red-400',
-                    bg: result.ssl.valid
+                    bg: result.ssl?.valid
                       ? 'bg-emerald-500/5 border-emerald-500/10'
                       : 'bg-red-500/5 border-red-500/10',
                   },
                   {
                     label: 'Certificate Issuer',
-                    value: result.ssl.issuer,
+                    value: result.ssl?.issuer || 'Unknown',
                     icon: Shield,
                     color: 'text-blue-400',
                     bg: 'bg-blue-500/5 border-blue-500/10',
                   },
                   {
                     label: 'Days Remaining',
-                    value: `${result.ssl.daysRemaining} days`,
+                    value: `${result.ssl?.daysRemaining ?? 0} days`,
                     icon: Clock,
                     color: 'text-cyan-400',
                     bg: 'bg-cyan-500/5 border-cyan-500/10',
                   },
                   {
                     label: 'TLS Protocol',
-                    value: result.ssl.tlsVersion,
+                    value: result.ssl?.tlsVersion || 'Unknown',
                     icon: Server,
                     color: 'text-purple-400',
                     bg: 'bg-purple-500/5 border-purple-500/10',
@@ -721,76 +721,84 @@ export default function Home() {
                 </div>
                 <div className="ml-auto flex items-center gap-2">
                   <span className="text-sm font-bold text-white">
-                    {result.headers.filter((h) => h.present).length}
+                    {presentHeadersCount}
                   </span>
                   <span className="text-sm text-slate-500">
-                    / {result.headers.length}
+                    / {safeHeaders.length}
                   </span>
-                  {/* mini bar */}
                   <div className="w-20 h-2 bg-white/5 rounded-full overflow-hidden ml-2">
                     <div
                       className="h-full bg-gradient-to-r from-blue-500 to-indigo-500 rounded-full transition-all duration-1000"
                       style={{
-                        width: `${(result.headers.filter((h) => h.present).length / result.headers.length) * 100}%`,
+                        width: safeHeaders.length > 0 ? `${(presentHeadersCount / safeHeaders.length) * 100}%` : '0%',
                       }}
                     />
                   </div>
                 </div>
               </div>
 
+              {/* 🛡️ Safe Mapping for Headers */}
               <div className="space-y-3">
-                {result.headers.map((h, idx) => (
-                  <div
-                    key={h.header}
-                    className={`rounded-2xl p-5 border transition-all hover-lift opacity-0 animate-fade-in-up ${
-                      h.present
-                        ? 'bg-emerald-500/5 border-emerald-500/10 hover:border-emerald-500/30'
-                        : 'bg-red-500/5 border-red-500/10 hover:border-red-500/30'
-                    }`}
-                    style={{
-                      animationDelay: `${idx * 0.05}s`,
-                      animationFillMode: 'forwards',
-                    }}
-                  >
-                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-3">
-                          {h.present ? (
-                            <div className="w-6 h-6 rounded-full bg-emerald-500/20 flex items-center justify-center flex-shrink-0">
-                              <CheckCircle className="w-3.5 h-3.5 text-emerald-400" />
-                            </div>
-                          ) : (
-                            <div className="w-6 h-6 rounded-full bg-red-500/20 flex items-center justify-center flex-shrink-0">
-                              <XCircle className="w-3.5 h-3.5 text-red-400" />
-                            </div>
-                          )}
-                          <span className="font-mono text-sm font-bold text-white">
-                            {h.header}
-                          </span>
-                          {h.present && (
-                            <span className="text-[10px] font-bold text-emerald-400 bg-emerald-500/10 px-2.5 py-1 rounded-full border border-emerald-500/20">
-                              +{h.score} pts
+                {safeHeaders.map((h: any, idx: number) => {
+                  if (!h) return null;
+                  const isPresent = h?.present ?? h?.data?.present ?? false;
+                  const headerName = h?.header ?? h?.data?.header ?? `Header #${idx + 1}`;
+                  const headerValue = h?.value ?? h?.data?.value ?? null;
+                  const headerScore = h?.score ?? h?.data?.score ?? 0;
+
+                  return (
+                    <div
+                      key={headerName || idx}
+                      className={`rounded-2xl p-5 border transition-all hover-lift opacity-0 animate-fade-in-up ${
+                        isPresent
+                          ? 'bg-emerald-500/5 border-emerald-500/10 hover:border-emerald-500/30'
+                          : 'bg-red-500/5 border-red-500/10 hover:border-red-500/30'
+                      }`}
+                      style={{
+                        animationDelay: `${idx * 0.05}s`,
+                        animationFillMode: 'forwards',
+                      }}
+                    >
+                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-3">
+                            {isPresent ? (
+                              <div className="w-6 h-6 rounded-full bg-emerald-500/20 flex items-center justify-center flex-shrink-0">
+                                <CheckCircle className="w-3.5 h-3.5 text-emerald-400" />
+                              </div>
+                            ) : (
+                              <div className="w-6 h-6 rounded-full bg-red-500/20 flex items-center justify-center flex-shrink-0">
+                                <XCircle className="w-3.5 h-3.5 text-red-400" />
+                              </div>
+                            )}
+                            <span className="font-mono text-sm font-bold text-white">
+                              {headerName}
                             </span>
+                            {isPresent && (
+                              <span className="text-[10px] font-bold text-emerald-400 bg-emerald-500/10 px-2.5 py-1 rounded-full border border-emerald-500/20">
+                                +{headerScore} pts
+                              </span>
+                            )}
+                          </div>
+                          {headerValue && (
+                            <p className="text-xs font-mono text-slate-500 mt-2 truncate max-w-2xl bg-black/20 rounded-xl px-4 py-2 border border-white/5">
+                              {headerValue}
+                            </p>
                           )}
                         </div>
-                        {h.value && (
-                          <p className="text-xs font-mono text-slate-500 mt-2 truncate max-w-2xl bg-black/20 rounded-xl px-4 py-2 border border-white/5">
-                            {h.value}
-                          </p>
-                        )}
+                        <span
+                          className={`text-xs font-bold px-4 py-2 rounded-xl w-fit flex-shrink-0 ${
+                            isPresent
+                              ? 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/20'
+                              : 'bg-red-500/15 text-red-400 border border-red-500/20'
+                          }`}
+                        >
+                          {isPresent ? 'Present' : 'Missing'}
+                        </span>
                       </div>
-                      <span
-                        className={`text-xs font-bold px-4 py-2 rounded-xl w-fit flex-shrink-0 ${
-                          h.present
-                            ? 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/20'
-                            : 'bg-red-500/15 text-red-400 border border-red-500/20'
-                        }`}
-                      >
-                        {h.present ? 'Present' : 'Missing'}
-                      </span>
                     </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             </div>
 
@@ -814,64 +822,67 @@ export default function Home() {
                 {[
                   {
                     label: 'SPF Record',
-                    data: result.dns.spf,
+                    data: result.dns?.spf,
                     desc: 'Sender Policy Framework prevents email spoofing',
                   },
                   {
                     label: 'DMARC Record',
-                    data: result.dns.dmarc,
+                    data: result.dns?.dmarc,
                     desc: 'Domain-based Message Authentication & Reporting',
                   },
                   {
                     label: 'DKIM Record',
-                    data: result.dns.dkim,
+                    data: result.dns?.dkim,
                     desc: 'DomainKeys Identified Mail signs outgoing email',
                   },
                   {
                     label: 'DNSSEC',
-                    data: result.dns.dnssec,
+                    data: result.dns?.dnssec,
                     desc: 'Prevents DNS spoofing & cache poisoning',
                   },
-                ].map((item, idx) => (
-                  <div
-                    key={idx}
-                    className={`rounded-2xl p-6 border transition hover-lift ${
-                      item.data.present
-                        ? 'bg-emerald-500/5 border-emerald-500/10'
-                        : 'bg-red-500/5 border-red-500/10'
-                    }`}
-                  >
-                    <div className="flex justify-between items-start mb-4">
-                      <div>
-                        <span className="font-mono text-sm font-bold text-white">
-                          {item.label}
+                ].map((item, idx) => {
+                  const isPresent = !!item.data?.present;
+                  return (
+                    <div
+                      key={idx}
+                      className={`rounded-2xl p-6 border transition hover-lift ${
+                        isPresent
+                          ? 'bg-emerald-500/5 border-emerald-500/10'
+                          : 'bg-red-500/5 border-red-500/10'
+                      }`}
+                    >
+                      <div className="flex justify-between items-start mb-4">
+                        <div>
+                          <span className="font-mono text-sm font-bold text-white">
+                            {item.label}
+                          </span>
+                          <p className="text-[11px] text-slate-500 mt-0.5">
+                            {item.desc}
+                          </p>
+                        </div>
+                        <span
+                          className={`text-xs font-bold px-3 py-1.5 rounded-full ${
+                            isPresent
+                              ? 'bg-emerald-500/20 text-emerald-400'
+                              : 'bg-red-500/20 text-red-400'
+                          }`}
+                        >
+                          {isPresent ? '✓ Found' : '✗ Missing'}
                         </span>
-                        <p className="text-[11px] text-slate-500 mt-0.5">
-                          {item.desc}
+                      </div>
+                      <div className="bg-black/30 rounded-xl p-4 border border-white/5">
+                        <p className="text-xs font-mono text-slate-400 break-all leading-relaxed">
+                          {item.data?.record || 'No record detected.'}
                         </p>
                       </div>
-                      <span
-                        className={`text-xs font-bold px-3 py-1.5 rounded-full ${
-                          item.data.present
-                            ? 'bg-emerald-500/20 text-emerald-400'
-                            : 'bg-red-500/20 text-red-400'
-                        }`}
-                      >
-                        {item.data.present ? '✓ Found' : '✗ Missing'}
-                      </span>
                     </div>
-                    <div className="bg-black/30 rounded-xl p-4 border border-white/5">
-                      <p className="text-xs font-mono text-slate-400 break-all leading-relaxed">
-                        {item.data.record || 'No record detected.'}
-                      </p>
-                    </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             </div>
 
             {/* ── Recommendations ── */}
-            {result.recommendations && result.recommendations.length > 0 && (
+            {Array.isArray(result.recommendations) && result.recommendations.length > 0 && (
               <div className="glass-strong rounded-3xl p-8 hover-glow">
                 <div className="flex items-center gap-3 mb-6">
                   <div className="w-10 h-10 bg-gradient-to-br from-yellow-500/20 to-orange-500/20 rounded-xl flex items-center justify-center">
@@ -961,7 +972,7 @@ export default function Home() {
                         <span
                           className={`font-mono font-bold ${getScoreColor(item.score)}`}
                         >
-                          {item.score}
+                          {item.score ?? 0}
                           <span className="text-slate-600">/100</span>
                         </span>
                       </td>
@@ -969,11 +980,11 @@ export default function Home() {
                         <span
                           className={`px-3 py-1.5 rounded-xl text-xs font-bold border ${getGradeColor(item.grade)}`}
                         >
-                          {item.grade}
+                          {item.grade || 'F'}
                         </span>
                       </td>
                       <td className="p-4 text-xs text-slate-500 hidden md:table-cell">
-                        {new Date(item.scannedAt).toLocaleString()}
+                        {item.scannedAt ? new Date(item.scannedAt).toLocaleString() : 'N/A'}
                       </td>
                       <td className="p-4 text-right">
                         <button
