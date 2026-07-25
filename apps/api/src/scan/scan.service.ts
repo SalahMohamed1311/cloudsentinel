@@ -1,7 +1,11 @@
 import { Injectable, BadRequestException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
+import { DnsSecurityService } from './dns-security.service';
+import { FingerprintService } from './fingerprint.service';
+import { CmsDetectionService } from './cms-detection.service';
+import { PortScanService } from './port-scan.service';
+import { RecommendationsService } from './recommendations.service';
 import * as tls from 'tls';
-import * as dns from 'dns/promises';
 import axios from 'axios';
 
 export interface SslResult {
@@ -19,24 +23,16 @@ export interface SecurityHeaderResult {
   score: number;
 }
 
-export interface DnsSecurityResult {
-  spf: { present: boolean; record: string | null };
-  dmarc: { present: boolean; record: string | null };
-}
-
-export interface ScanResponseDto {
-  targetUrl: string;
-  score: number;
-  grade: 'A+' | 'A' | 'B' | 'C' | 'D' | 'F';
-  ssl: SslResult;
-  headers: SecurityHeaderResult[];
-  dns: DnsSecurityResult;
-  scannedAt: Date | string;
-}
-
 @Injectable()
 export class ScanService {
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    private readonly dnsSecurityService: DnsSecurityService,
+    private readonly fingerprintService: FingerprintService,
+    private readonly cmsDetectionService: CmsDetectionService,
+    private readonly portScanService: PortScanService,
+    private readonly recommendationsService: RecommendationsService,
+  ) {}
 
   async scanUrl(rawUrl: string) {
     const formattedUrl = this.normalizeUrl(rawUrl);
@@ -48,15 +44,58 @@ export class ScanService {
       throw new BadRequestException('Invalid URL provided');
     }
 
-    const [sslResult, headersResult, dnsResult] = await Promise.all([
-      this.checkSsl(hostname),
-      this.checkHeaders(formattedUrl),
-      this.checkDnsSecurity(hostname),
-    ]);
+    // 1. تشغيل جميع فحوصات الأمان والـ Fingerprinting بالتوازي لتوفير الوقت
+    const [sslResult, headersResult, dnsResult, fingerprintResult, cmsResult, portScanResult] =
+      await Promise.all([
+        this.checkSsl(hostname),
+        this.checkHeaders(formattedUrl),
+        this.dnsSecurityService.check(hostname),
+        this.fingerprintService.check(formattedUrl, hostname),
+        this.cmsDetectionService.detect(formattedUrl),
+        this.portScanService.check(hostname),
+      ]);
 
-    const { score, grade } = this.calculateScore(sslResult, headersResult, dnsResult);
+    // 2. استخراج العناوين الناقصة بناءً على الفحص
+    const missingHeaders = headersResult
+      .filter((h) => !h.present)
+      .map((h) => h.header);
 
-    // Save scan result in DB
+    // 3. توليد التوصيات الأمنية بناءً على النتائج
+    const recommendations = this.recommendationsService.build({
+      sslValid: sslResult.valid,
+      missingHeaders,
+      spfFound: dnsResult.spf.found,
+      dmarcFound: dnsResult.dmarc.found,
+      dmarcPolicy: dnsResult.dmarc.policy,
+      dnssecEnabled: dnsResult.dnssec.enabled,
+      isPrivateIp: portScanResult.isPrivateIp,
+    });
+
+    // 4. حساب النتيجة الإجمالية والتقييم (Grade)
+    const { score, grade } = this.calculateScore(
+      sslResult.valid,
+      headersResult,
+      dnsResult.spf.found,
+      dnsResult.dmarc.found,
+    );
+
+    // 5. تجهيز كائن النتائج النهائي
+    const scanResultData = {
+      targetUrl: formattedUrl,
+      hostname,
+      score,
+      grade,
+      ssl: sslResult,
+      headers: headersResult,
+      dns: dnsResult,
+      fingerprint: fingerprintResult,
+      cms: cmsResult,
+      ports: portScanResult,
+      recommendations,
+      scannedAt: new Date(),
+    };
+
+    // 6. حفظ النتيجة في قاعدة البيانات عبر Prisma
     const savedScan = await this.prisma.scanHistory.create({
       data: {
         targetUrl: formattedUrl,
@@ -65,16 +104,25 @@ export class ScanService {
         ssl: JSON.parse(JSON.stringify(sslResult)),
         headers: JSON.parse(JSON.stringify(headersResult)),
         dns: JSON.parse(JSON.stringify(dnsResult)),
+        // في حال كان المخطط (Schema) يدعم الحقول الجديدة مباشرة أو عبر JSON:
+        // fingerprint: JSON.parse(JSON.stringify(fingerprintResult)),
+        // cms: JSON.parse(JSON.stringify(cmsResult)),
+        // ports: JSON.parse(JSON.stringify(portScanResult)),
+        // recommendations,
       },
     });
 
-    return savedScan;
+    // إرجاع النتيجة المكتملة للـ API Response
+    return {
+      id: savedScan.id,
+      ...scanResultData,
+    };
   }
 
   async getHistory() {
     return this.prisma.scanHistory.findMany({
       orderBy: { scannedAt: 'desc' },
-      take: 10, // Latest 10 scans
+      take: 10,
     });
   }
 
@@ -90,7 +138,7 @@ export class ScanService {
     return new Promise((resolve) => {
       const socket = tls.connect(443, hostname, { servername: hostname, timeout: 5000 }, () => {
         const cert = socket.getPeerCertificate();
-        
+
         if (!cert || Object.keys(cert).length === 0) {
           resolve({
             valid: false,
@@ -105,7 +153,6 @@ export class ScanService {
 
         const validTo = new Date(cert.valid_to);
         const daysRemaining = Math.max(0, Math.floor((validTo.getTime() - Date.now()) / (1000 * 60 * 60 * 24)));
-
         const rawIssuer = cert.issuer?.O || cert.issuer?.CN;
         const issuerName = Array.isArray(rawIssuer) ? rawIssuer.join(', ') : (rawIssuer || 'Unknown');
 
@@ -164,44 +211,16 @@ export class ScanService {
     }
   }
 
-  private async checkDnsSecurity(hostname: string): Promise<DnsSecurityResult> {
-    let spfRecord: string | null = null;
-    let dmarcRecord: string | null = null;
-
-    try {
-      const txtRecords = await dns.resolveTxt(hostname);
-      const flatTxt = txtRecords.map((r) => r.join(''));
-      const spf = flatTxt.find((r) => r.startsWith('v=spf1'));
-      if (spf) spfRecord = spf;
-    } catch {
-      // SPF Record Missing
-    }
-
-    try {
-      const dmarcTxt = await dns.resolveTxt(`_dmarc.${hostname}`);
-      const flatDmarc = dmarcTxt.map((r) => r.join(''));
-      const dmarc = flatDmarc.find((r) => r.startsWith('v=DMARC1'));
-      if (dmarc) dmarcRecord = dmarc;
-    } catch {
-      // DMARC Record Missing
-    }
-
-    return {
-      spf: { present: !!spfRecord, record: spfRecord },
-      dmarc: { present: !!dmarcRecord, record: dmarcRecord },
-    };
-  }
-
-  private calculateScore(ssl: SslResult, headers: SecurityHeaderResult[], dnsRes: DnsSecurityResult) {
+  private calculateScore(sslValid: boolean, headers: SecurityHeaderResult[], spfFound: boolean, dmarcFound: boolean) {
     let total = 0;
 
-    if (ssl.valid) total += 30;
+    if (sslValid) total += 30;
 
     const headerScoreSum = headers.reduce((acc, curr) => acc + (curr.present ? 8 : 0), 0);
     total += headerScoreSum;
 
-    if (dnsRes.spf.present) total += 10;
-    if (dnsRes.dmarc.present) total += 10;
+    if (spfFound) total += 10;
+    if (dmarcFound) total += 10;
 
     let grade: 'A+' | 'A' | 'B' | 'C' | 'D' | 'F' = 'F';
     if (total >= 90) grade = 'A+';

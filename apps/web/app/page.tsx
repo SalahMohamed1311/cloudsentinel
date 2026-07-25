@@ -50,6 +50,14 @@ interface SecurityHeaderResult {
 interface DnsSecurityResult {
   spf: { present: boolean; record: string | null };
   dmarc: { present: boolean; record: string | null };
+  dkim: { present: boolean; record: string | null };
+  dnssec: { present: boolean; record: string | null };
+}
+
+interface FingerprintResult {
+  cloudProvider: string | null;
+  waf: string | null;
+  cms: string | null;
 }
 
 interface ScanResponse {
@@ -60,6 +68,8 @@ interface ScanResponse {
   ssl: SslResult;
   headers: SecurityHeaderResult[];
   dns: DnsSecurityResult;
+  fingerprint: FingerprintResult;
+  recommendations: string[];
   scannedAt: string;
 }
 
@@ -168,6 +178,31 @@ function StatusBadge({
       </div>
       <span className="text-sm text-slate-300">{label}</span>
     </div>
+  );
+}
+
+/* ───────── Detection Pill (Cloud / WAF / CMS) ───────── */
+function DetectionPill({
+  icon: Icon,
+  label,
+  color,
+}: {
+  icon: any;
+  label: string;
+  color: 'blue' | 'purple' | 'cyan';
+}) {
+  const colorMap = {
+    blue: 'text-blue-300 bg-blue-500/10 border-blue-500/20',
+    purple: 'text-purple-300 bg-purple-500/10 border-purple-500/20',
+    cyan: 'text-cyan-300 bg-cyan-500/10 border-cyan-500/20',
+  };
+  return (
+    <span
+      className={`text-[11px] font-semibold px-3 py-1 rounded-full border flex items-center gap-1.5 ${colorMap[color]}`}
+    >
+      <Icon className="w-3 h-3" />
+      {label}
+    </span>
   );
 }
 
@@ -464,6 +499,36 @@ export default function Home() {
                       }
                     />
                   </div>
+
+                  {/* Detection badges — cloud provider / WAF / CMS */}
+                  {(result.fingerprint?.cloudProvider ||
+                    result.fingerprint?.waf ||
+                    result.fingerprint?.cms) && (
+                    <div className="flex flex-wrap gap-2">
+                      {result.fingerprint.cloudProvider && (
+                        <DetectionPill
+                          icon={Server}
+                          label={result.fingerprint.cloudProvider}
+                          color="blue"
+                        />
+                      )}
+                      {result.fingerprint.waf && (
+                        <DetectionPill
+                          icon={ShieldCheck}
+                          label={`${result.fingerprint.waf} WAF`}
+                          color="purple"
+                        />
+                      )}
+                      {result.fingerprint.cms && (
+                        <DetectionPill
+                          icon={Fingerprint}
+                          label={result.fingerprint.cms}
+                          color="cyan"
+                        />
+                      )}
+                    </div>
+                  )}
+
                   <div className="text-xs text-slate-500 flex items-center gap-2">
                     <Calendar className="w-3.5 h-3.5" />
                     {new Date(result.scannedAt).toLocaleString()}
@@ -740,7 +805,7 @@ export default function Home() {
                     DNS Email Security
                   </h3>
                   <p className="text-xs text-slate-500">
-                    SPF & DMARC record validation
+                    SPF, DKIM, DMARC & DNSSEC record validation
                   </p>
                 </div>
               </div>
@@ -756,6 +821,16 @@ export default function Home() {
                     label: 'DMARC Record',
                     data: result.dns.dmarc,
                     desc: 'Domain-based Message Authentication & Reporting',
+                  },
+                  {
+                    label: 'DKIM Record',
+                    data: result.dns.dkim,
+                    desc: 'DomainKeys Identified Mail signs outgoing email',
+                  },
+                  {
+                    label: 'DNSSEC',
+                    data: result.dns.dnssec,
+                    desc: 'Prevents DNS spoofing & cache poisoning',
                   },
                 ].map((item, idx) => (
                   <div
@@ -794,6 +869,36 @@ export default function Home() {
                 ))}
               </div>
             </div>
+
+            {/* ── Recommendations ── */}
+            {result.recommendations && result.recommendations.length > 0 && (
+              <div className="glass-strong rounded-3xl p-8 hover-glow">
+                <div className="flex items-center gap-3 mb-6">
+                  <div className="w-10 h-10 bg-gradient-to-br from-yellow-500/20 to-orange-500/20 rounded-xl flex items-center justify-center">
+                    <Award className="w-5 h-5 text-yellow-400" />
+                  </div>
+                  <div>
+                    <h3 className="text-lg font-bold text-white">
+                      Recommendations
+                    </h3>
+                    <p className="text-xs text-slate-500">
+                      Fixes to improve this security score
+                    </p>
+                  </div>
+                </div>
+                <ul className="space-y-3">
+                  {result.recommendations.map((rec, idx) => (
+                    <li
+                      key={idx}
+                      className="flex items-start gap-3 bg-yellow-500/5 border border-yellow-500/10 rounded-2xl p-4 text-sm text-slate-300"
+                    >
+                      <AlertCircle className="w-4 h-4 text-yellow-400 flex-shrink-0 mt-0.5" />
+                      <span>{rec}</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
           </section>
         )}
 
