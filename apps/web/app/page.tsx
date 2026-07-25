@@ -1,7 +1,7 @@
 'use client';
 
 export const dynamic = 'force-dynamic';
-import { useUser, SignInButton, UserButton } from '@clerk/nextjs';
+
 import { useState, useEffect, useRef } from 'react';
 import {
   Shield,
@@ -208,8 +208,6 @@ function DetectionPill({
 /*  MAIN COMPONENT                        */
 /* ═══════════════════════════════════════ */
 export default function Home() {
-  const { isSignedIn } = useUser(); // ✅ Added this line - was missing!
-  
   const [url, setUrl] = useState('');
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<ScanResponse | null>(null);
@@ -353,30 +351,15 @@ export default function Home() {
               </p>
             </div>
           </div>
-          <div className="flex items-center gap-6">
-            <div className="hidden md:flex items-center gap-6">
-              <div className="flex items-center gap-2 text-xs text-slate-400">
-                <Activity className="w-3.5 h-3.5 text-emerald-400" />
-                <span>System Active</span>
-              </div>
-              <div className="w-px h-4 bg-slate-700" />
-              <div className="flex items-center gap-2 text-xs text-slate-400">
-                <Radio className="w-3.5 h-3.5 text-blue-400 animate-pulse" />
-                <span>{history.length} Scans</span>
-              </div>
+          <div className="hidden md:flex items-center gap-6">
+            <div className="flex items-center gap-2 text-xs text-slate-400">
+              <Activity className="w-3.5 h-3.5 text-emerald-400" />
+              <span>System Active</span>
             </div>
-
-            {/* أزرار المصادقة عبر Clerk */}
-            <div className="flex items-center gap-3">
-              {!isSignedIn ? (
-                <SignInButton mode="modal">
-                  <button className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white text-xs font-bold px-4 py-2 rounded-xl transition shadow-md shadow-blue-600/20">
-                    تسجيل الدخول
-                  </button>
-                </SignInButton>
-              ) : (
-                <UserButton afterSignOutUrl="/" />
-              )}
+            <div className="w-px h-4 bg-slate-700" />
+            <div className="flex items-center gap-2 text-xs text-slate-400">
+              <Radio className="w-3.5 h-3.5 text-blue-400 animate-pulse" />
+              <span>{history.length} Scans</span>
             </div>
           </div>
         </nav>
@@ -386,7 +369,7 @@ export default function Home() {
           <div className="inline-flex items-center gap-2 glass rounded-full px-5 py-2 mb-8">
             <Sparkles className="w-4 h-4 text-yellow-400" />
             <span className="text-xs font-semibold text-slate-300">
-              Advanced Threat Detection & Analysis
+              Advanced Threat Detection &amp; Analysis
             </span>
           </div>
 
@@ -644,14 +627,15 @@ export default function Home() {
                     SSL / TLS Certificate
                   </h3>
                   <p className="text-xs text-slate-500">
-                    Certificate validation & protocol analysis
+                    Certificate validation &amp; protocol analysis
                   </p>
                 </div>
                 <span
-                  className={`ml-auto text-xs font-bold px-3 py-1.5 rounded-full ${result.ssl?.valid
-                    ? 'bg-emerald-500/20 text-emerald-400'
-                    : 'bg-red-500/20 text-red-400'
-                    }`}
+                  className={`ml-auto text-xs font-bold px-3 py-1.5 rounded-full ${
+                    result.ssl?.valid
+                      ? 'bg-emerald-500/20 text-emerald-400'
+                      : 'bg-red-500/20 text-red-400'
+                  }`}
                 >
                   {result.ssl?.valid ? '✓ Trusted' : '✗ Invalid'}
                 </span>
@@ -707,10 +691,11 @@ export default function Home() {
                         </span>
                       </div>
                       <p
-                        className={`font-bold text-sm truncate ${item.label === 'Certificate Status'
-                          ? item.color
-                          : 'text-white'
-                          }`}
+                        className={`font-bold text-sm truncate ${
+                          item.label === 'Certificate Status'
+                            ? item.color
+                            : 'text-white'
+                        }`}
                       >
                         {item.value}
                       </p>
@@ -815,7 +800,7 @@ export default function Home() {
                     {presentHeadersCount}
                   </span>
                   <span className="text-sm text-slate-500">
-                    /{safeHeaders.length}
+                    / {safeHeaders.length}
                   </span>
                   <div className="w-20 h-2 bg-white/5 rounded-full overflow-hidden ml-2">
                     <div
@@ -840,10 +825,11 @@ export default function Home() {
                   return (
                     <div
                       key={headerName || idx}
-                      className={`rounded-2xl p-5 border transition-all hover-lift opacity-0 animate-fade-in-up ${isPresent
-                        ? 'bg-emerald-500/5 border-emerald-500/10 hover:border-emerald-500/30'
-                        : 'bg-red-500/5 border-red-500/10 hover:border-red-500/30'
-                        }`}
+                      className={`rounded-2xl p-5 border transition-all hover-lift opacity-0 animate-fade-in-up ${
+                        isPresent
+                          ? 'bg-emerald-500/5 border-emerald-500/10 hover:border-emerald-500/30'
+                          : 'bg-red-500/5 border-red-500/10 hover:border-red-500/30'
+                      }`}
                       style={{
                         animationDelay: `${idx * 0.05}s`,
                         animationFillMode: 'forwards',
@@ -877,10 +863,11 @@ export default function Home() {
                           )}
                         </div>
                         <span
-                          className={`text-xs font-bold px-4 py-2 rounded-xl w-fit flex-shrink-0 ${isPresent
-                            ? 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/20'
-                            : 'bg-red-500/15 text-red-400 border border-red-500/20'
-                            }`}
+                          className={`text-xs font-bold px-4 py-2 rounded-xl w-fit flex-shrink-0 ${
+                            isPresent
+                              ? 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/20'
+                              : 'bg-red-500/15 text-red-400 border border-red-500/20'
+                          }`}
                         >
                           {isPresent ? 'Present' : 'Missing'}
                         </span>
@@ -934,10 +921,11 @@ export default function Home() {
                   return (
                     <div
                       key={idx}
-                      className={`rounded-2xl p-6 border transition hover-lift ${isPresent
-                        ? 'bg-emerald-500/5 border-emerald-500/10'
-                        : 'bg-red-500/5 border-red-500/10'
-                        }`}
+                      className={`rounded-2xl p-6 border transition hover-lift ${
+                        isPresent
+                          ? 'bg-emerald-500/5 border-emerald-500/10'
+                          : 'bg-red-500/5 border-red-500/10'
+                      }`}
                     >
                       <div className="flex justify-between items-start mb-4">
                         <div>
@@ -949,10 +937,11 @@ export default function Home() {
                           </p>
                         </div>
                         <span
-                          className={`text-xs font-bold px-3 py-1.5 rounded-full ${isPresent
-                            ? 'bg-emerald-500/20 text-emerald-400'
-                            : 'bg-red-500/20 text-red-400'
-                            }`}
+                          className={`text-xs font-bold px-3 py-1.5 rounded-full ${
+                            isPresent
+                              ? 'bg-emerald-500/20 text-emerald-400'
+                              : 'bg-red-500/20 text-red-400'
+                          }`}
                         >
                           {isPresent ? '✓ Found' : '✗ Missing'}
                         </span>
@@ -968,7 +957,7 @@ export default function Home() {
               </div>
             </div>
 
-            {/* ── Recommendations ── */}
+             {/* ── Recommendations ── */}
             {Array.isArray(result.recommendations) && result.recommendations.length > 0 && (
               <div className="glass-strong rounded-3xl p-8 hover-glow">
                 <div className="flex items-center gap-3 mb-6">
@@ -999,7 +988,6 @@ export default function Home() {
             )}
           </section>
         )}
-
         {/* ═══════ History ═══════ */}
         {history.length > 0 && (
           <section className="mt-12 glass-strong rounded-3xl p-8 hover-glow animate-fade-in-up">
