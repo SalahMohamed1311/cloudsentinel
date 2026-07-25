@@ -2,7 +2,7 @@
 
 export const dynamic = 'force-dynamic';
 import ScoreChart from '../components/ScoreChart';
-import { useUser, SignInButton, UserButton } from '@clerk/nextjs';
+import { useUser, useClerk, SignInButton, UserButton } from '@clerk/nextjs';
 import { useState, useEffect, useRef } from 'react';
 import axios from 'axios';
 import {
@@ -234,7 +234,7 @@ function DashboardPage() {
         });
         const websitesArray = Array.from(websitesMap.values());
         websitesArray.forEach(site => {
-          site.scans.sort((a: any, b: any) => 
+          site.scans.sort((a: any, b: any) =>
             new Date(a.scannedAt).getTime() - new Date(b.scannedAt).getTime()
           );
         });
@@ -320,6 +320,7 @@ function DashboardPage() {
 /* ═══════════════════════════════════════ */
 export default function Home() {
   const { isSignedIn } = useUser();
+  const { signOut } = useClerk();
   const [url, setUrl] = useState('');
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<ScanResponse | null>(null);
@@ -487,7 +488,7 @@ export default function Home() {
                   >
                     {showDashboard ? 'إخفاء' : 'لوحة التحكم'}
                   </button>
-                  <UserButton afterSignOutUrl="/" />
+                  <UserButton />
                 </>
               ) : (
                 <SignInButton mode="modal">
@@ -508,7 +509,7 @@ export default function Home() {
           <div className="inline-flex items-center gap-2 glass rounded-full px-5 py-2 mb-8">
             <Sparkles className="w-4 h-4 text-yellow-400" />
             <span className="text-xs font-semibold text-slate-300">
-              Advanced Threat Detection &amp; Analysis
+              Advanced Threat Detection & Analysis
             </span>
           </div>
 
@@ -766,7 +767,7 @@ export default function Home() {
                     SSL / TLS Certificate
                   </h3>
                   <p className="text-xs text-slate-500">
-                    Certificate validation &amp; protocol analysis
+                    Certificate validation & protocol analysis
                   </p>
                 </div>
                 <span
@@ -1090,7 +1091,7 @@ export default function Home() {
               </div>
             </div>
 
-             {/* ── Recommendations ── */}
+            {/* ── Recommendations ── */}
             {Array.isArray(result.recommendations) && result.recommendations.length > 0 && (
               <div className="glass-strong rounded-3xl p-8 hover-glow">
                 <div className="flex items-center gap-3 mb-6">
@@ -1121,6 +1122,7 @@ export default function Home() {
             )}
           </section>
         )}
+
         {/* ═══════ History ═══════ */}
         {history.length > 0 && (
           <section className="mt-12 glass-strong rounded-3xl p-8 hover-glow animate-fade-in-up">
