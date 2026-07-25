@@ -498,22 +498,22 @@ export default function Home() {
   <div className="flex items-center gap-3" >
   {
     isSignedIn?(
-                <>
+    <>
     <button
-                    onClick={ () => setShowDashboard(!showDashboard) }
+        onClick={ () => setShowDashboard(!showDashboard) }
   className = "text-xs font-semibold text-slate-300 hover:text-white transition px-3 py-1.5 rounded-lg bg-white/5 hover:bg-white/10"
     >
     { showDashboard? 'Hide': 'Dashboard' }
     </button>
     < UserButton />
     </>
-              ) : (
-    <SignInButton mode= "modal" redirectUrl = "/" >
-      <button className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white text-xs font-bold px-4 py-2 rounded-xl transition shadow-md shadow-blue-600/20" >
-        Sign In
-          </button>
-          </SignInButton>
-              )
+  ) : (
+    <SignInButton mode= "modal" >
+    <button className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white text-xs font-bold px-4 py-2 rounded-xl transition shadow-md shadow-blue-600/20" >
+      Sign In
+        </button>
+        </SignInButton>
+  )
 }
 </div>
   </div>
@@ -545,12 +545,12 @@ export default function Home() {
                         < div className = "flex flex-wrap items-center justify-center gap-8 mt-10" >
                         {
                           [
-                          { icon: ShieldCheck, label: 'SSL Analysis', color: 'text-emerald-400' },
-                          { icon: Fingerprint, label: 'Header Scan', color: 'text-blue-400' },
-                          { icon: Mail, label: 'DNS Security', color: 'text-purple-400' },
-                          { icon: Zap, label: 'Instant Results', color: 'text-yellow-400' },
+                            { icon: ShieldCheck, label: 'SSL Analysis', color: 'text-emerald-400' },
+                            { icon: Fingerprint, label: 'Header Scan', color: 'text-blue-400' },
+                            { icon: Mail, label: 'DNS Security', color: 'text-purple-400' },
+                            { icon: Zap, label: 'Instant Results', color: 'text-yellow-400' },
             ].map((item, i) => (
-                            <div
+                              <div
                 key= { i }
                 className = "flex items-center gap-2 text-sm text-slate-400 opacity-0 animate-fade-in-up"
                 style = {{ animationDelay: `${0.3 + i * 0.1}s`, animationFillMode: 'forwards' }}
@@ -680,10 +680,10 @@ className = "relative bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-60
     (result.fingerprint?.cloudProvider ||
       result.fingerprint?.waf ||
       result.fingerprint?.cms) && (
-      <div className="flex flex-wrap gap-2" >
-      {
-        result.fingerprint?.cloudProvider && (
-          <DetectionPill
+        <div className="flex flex-wrap gap-2" >
+        {
+          result.fingerprint?.cloudProvider && (
+            <DetectionPill
                           icon={ Server }
     label = { result.fingerprint.cloudProvider }
     color = "blue"
@@ -743,45 +743,45 @@ className = "glass hover-glow text-slate-200 px-6 py-3 rounded-xl text-sm font-s
 <div className="grid grid-cols-2 lg:grid-cols-4 gap-4" >
 {
   [
-  {
-    label: 'Headers Present',
-    value: `${presentHeadersCount}/${safeHeaders.length}`,
-    icon: Shield,
-    color: 'from-blue-500/20 to-indigo-500/20',
-    iconColor: 'text-blue-400',
-  },
-  {
-    label: 'SSL Days Left',
-    value: `${result.ssl?.daysRemaining ?? 0}`,
-    icon: Clock,
-    color: 'from-emerald-500/20 to-cyan-500/20',
-    iconColor: 'text-emerald-400',
-  },
-  {
-    label: 'TLS Protocol',
-    value: result.ssl?.tlsVersion || 'N/A',
-    icon: Lock,
-    color: 'from-purple-500/20 to-pink-500/20',
-    iconColor: 'text-purple-400',
-  },
-  {
-    label: 'Email Security',
-    value:
-      result.dns?.spf?.present && result.dns?.dmarc?.present
-        ? 'Protected'
-        : 'At Risk',
-    icon: Mail,
-    color: 'from-yellow-500/20 to-orange-500/20',
-    iconColor: 'text-yellow-400',
-  },
+    {
+      label: 'Headers Present',
+      value: `${presentHeadersCount}/${safeHeaders.length}`,
+      icon: Shield,
+      color: 'from-blue-500/20 to-indigo-500/20',
+      iconColor: 'text-blue-400',
+    },
+    {
+      label: 'SSL Days Left',
+      value: `${result.ssl?.daysRemaining ?? 0}`,
+      icon: Clock,
+      color: 'from-emerald-500/20 to-cyan-500/20',
+      iconColor: 'text-emerald-400',
+    },
+    {
+      label: 'TLS Protocol',
+      value: result.ssl?.tlsVersion || 'N/A',
+      icon: Lock,
+      color: 'from-purple-500/20 to-pink-500/20',
+      iconColor: 'text-purple-400',
+    },
+    {
+      label: 'Email Security',
+      value:
+        result.dns?.spf?.present && result.dns?.dmarc?.present
+          ? 'Protected'
+          : 'At Risk',
+      icon: Mail,
+      color: 'from-yellow-500/20 to-orange-500/20',
+      iconColor: 'text-yellow-400',
+    },
               ].map((stat, idx) => (
-    <div
+      <div
                   key= { idx }
                   className = "glass rounded-2xl p-5 hover-lift opacity-0 animate-fade-in-up"
                   style = {{
-    animationDelay: `${idx * 0.1}s`,
-    animationFillMode: 'forwards',
-  }}
+      animationDelay: `${idx * 0.1}s`,
+      animationFillMode: 'forwards',
+    }}
   >
   <div
                     className={ `w-10 h-10 rounded-xl bg-gradient-to-br ${stat.color} flex items-center justify-center mb-3` }
@@ -825,50 +825,50 @@ className = {`ml-auto text-xs font-bold px-3 py-1.5 rounded-full ${result.ssl?.v
   < div className = "grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4" >
     {
       [
-      {
-        label: 'Certificate Status',
-        value: result.ssl?.valid
-          ? '✓ Valid & Trusted'
-          : '✗ Invalid',
-        icon: result.ssl?.valid ? CheckCircle : XCircle,
-        color: result.ssl?.valid
-          ? 'text-emerald-400'
-          : 'text-red-400',
-        bg: result.ssl?.valid
-          ? 'bg-emerald-500/5 border-emerald-500/10'
-          : 'bg-red-500/5 border-red-500/10',
-      },
-      {
-        label: 'Certificate Issuer',
-        value: result.ssl?.issuer || 'Unknown',
-        icon: Shield,
-        color: 'text-blue-400',
-        bg: 'bg-blue-500/5 border-blue-500/10',
-      },
-      {
-        label: 'Days Remaining',
-        value: `${result.ssl?.daysRemaining ?? 0} days`,
-        icon: Clock,
-        color: 'text-cyan-400',
-        bg: 'bg-cyan-500/5 border-cyan-500/10',
-      },
-      {
-        label: 'TLS Protocol',
-        value: result.ssl?.tlsVersion || 'Unknown',
-        icon: Server,
-        color: 'text-purple-400',
-        bg: 'bg-purple-500/5 border-purple-500/10',
-      },
+        {
+          label: 'Certificate Status',
+          value: result.ssl?.valid
+            ? '✓ Valid & Trusted'
+            : '✗ Invalid',
+          icon: result.ssl?.valid ? CheckCircle : XCircle,
+          color: result.ssl?.valid
+            ? 'text-emerald-400'
+            : 'text-red-400',
+          bg: result.ssl?.valid
+            ? 'bg-emerald-500/5 border-emerald-500/10'
+            : 'bg-red-500/5 border-red-500/10',
+        },
+        {
+          label: 'Certificate Issuer',
+          value: result.ssl?.issuer || 'Unknown',
+          icon: Shield,
+          color: 'text-blue-400',
+          bg: 'bg-blue-500/5 border-blue-500/10',
+        },
+        {
+          label: 'Days Remaining',
+          value: `${result.ssl?.daysRemaining ?? 0} days`,
+          icon: Clock,
+          color: 'text-cyan-400',
+          bg: 'bg-cyan-500/5 border-cyan-500/10',
+        },
+        {
+          label: 'TLS Protocol',
+          value: result.ssl?.tlsVersion || 'Unknown',
+          icon: Server,
+          color: 'text-purple-400',
+          bg: 'bg-purple-500/5 border-purple-500/10',
+        },
                 ].map((item, idx) => {
-        const Icon = item.icon;
-        return (
-          <div
+          const Icon = item.icon;
+          return (
+            <div
                       key= { idx }
-        className = {`rounded-2xl p-5 border transition hover-lift ${item.bg}`
-      }
+          className = {`rounded-2xl p-5 border transition hover-lift ${item.bg}`
+        }
                     >
-        <div className="flex items-center gap-2 mb-3" >
-      <Icon className={`w-4 h-4 ${item.color}`} />
+          <div className="flex items-center gap-2 mb-3" >
+        <Icon className={`w-4 h-4 ${item.color}`} />
     <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider" >
       { item.label }
       </span>
@@ -1085,51 +1085,51 @@ className = {`text-xs font-bold px-4 py-2 rounded-xl w-fit flex-shrink-0 ${isPre
                 < div className = "grid grid-cols-1 md:grid-cols-2 gap-6" >
                 {
                   [
-                  {
-                    label: 'SPF Record',
-                    data: result.dns?.spf,
-                    desc: 'Sender Policy Framework prevents email spoofing',
-                  },
-                  {
-                    label: 'DMARC Record',
-                    data: result.dns?.dmarc,
-                    desc: 'Domain-based Message Authentication & Reporting',
-                  },
-                  {
-                    label: 'DKIM Record',
-                    data: result.dns?.dkim,
-                    desc: 'DomainKeys Identified Mail signs outgoing email',
-                  },
-                  {
-                    label: 'DNSSEC',
-                    data: result.dns?.dnssec,
-                    desc: 'Prevents DNS spoofing & cache poisoning',
-                  },
+                    {
+                      label: 'SPF Record',
+                      data: result.dns?.spf,
+                      desc: 'Sender Policy Framework prevents email spoofing',
+                    },
+                    {
+                      label: 'DMARC Record',
+                      data: result.dns?.dmarc,
+                      desc: 'Domain-based Message Authentication & Reporting',
+                    },
+                    {
+                      label: 'DKIM Record',
+                      data: result.dns?.dkim,
+                      desc: 'DomainKeys Identified Mail signs outgoing email',
+                    },
+                    {
+                      label: 'DNSSEC',
+                      data: result.dns?.dnssec,
+                      desc: 'Prevents DNS spoofing & cache poisoning',
+                    },
                 ].map((item, idx) => {
-                    const isPresent = !!item.data?.present;
-                    return (
-                      <div
+                      const isPresent = !!item.data?.present;
+                      return (
+                        <div
                       key= { idx }
-                    className = {`rounded-2xl p-6 border transition hover-lift ${isPresent
-                      ? 'bg-emerald-500/5 border-emerald-500/10'
-                      : 'bg-red-500/5 border-red-500/10'
-                      }`
-                  }
+                      className = {`rounded-2xl p-6 border transition hover-lift ${isPresent
+                        ? 'bg-emerald-500/5 border-emerald-500/10'
+                        : 'bg-red-500/5 border-red-500/10'
+                        }`
+                    }
                     >
-                    <div className="flex justify-between items-start mb-4" >
-                  <div>
-                  <span className="font-mono text-sm font-bold text-white" >
-                  { item.label }
-                  </span>
-                  < p className = "text-[11px] text-slate-500 mt-0.5" >
-                  { item.desc }
-                  </p>
-                  </div>
-                  < span
+                      <div className="flex justify-between items-start mb-4" >
+                    <div>
+                    <span className="font-mono text-sm font-bold text-white" >
+                    { item.label }
+                    </span>
+                    < p className = "text-[11px] text-slate-500 mt-0.5" >
+                    { item.desc }
+                    </p>
+                    </div>
+                    < span
                           className = {`text-xs font-bold px-3 py-1.5 rounded-full ${isPresent
-                      ? 'bg-emerald-500/20 text-emerald-400'
-                      : 'bg-red-500/20 text-red-400'
-                      }`}
+                        ? 'bg-emerald-500/20 text-emerald-400'
+                        : 'bg-red-500/20 text-red-400'
+                        }`}
                   >
                   { isPresent? '✓ Found': '✗ Missing' }
                   </span>
