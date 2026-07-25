@@ -44,7 +44,12 @@ export class ScanService {
       throw new BadRequestException('Invalid URL provided');
     }
 
-    // 1. تشغيل جميع فحوصات الأمان والـ Fingerprinting بالتوازي لتوفير الوقت
+    // 🛡️ [SSRF Guard Check] - التحقق من العناوين الداخلية قبل إجراء أي اتصال أو فحص
+    if (this.isPrivateIp(hostname)) {
+      throw new BadRequestException('SSRF Guard: Scanning internal or private IP addresses is prohibited.');
+    }
+
+    // 1. تشغيل جميع فحوصات الأمان والـ Fingerprinting بالتوازي بعد تخطي اختبار الأمان
     const [sslResult, headersResult, dnsResult, fingerprintResult, cmsResult, portScanResult] =
       await Promise.all([
         this.checkSsl(hostname),
@@ -104,11 +109,6 @@ export class ScanService {
         ssl: JSON.parse(JSON.stringify(sslResult)),
         headers: JSON.parse(JSON.stringify(headersResult)),
         dns: JSON.parse(JSON.stringify(dnsResult)),
-        // في حال كان المخطط (Schema) يدعم الحقول الجديدة مباشرة أو عبر JSON:
-        // fingerprint: JSON.parse(JSON.stringify(fingerprintResult)),
-        // cms: JSON.parse(JSON.stringify(cmsResult)),
-        // ports: JSON.parse(JSON.stringify(portScanResult)),
-        // recommendations,
       },
     });
 
@@ -124,6 +124,20 @@ export class ScanService {
       orderBy: { scannedAt: 'desc' },
       take: 10,
     });
+  }
+
+  // دالة مساعدة لكشف العناوين الداخلية والـ Loopback مباشرة
+  private isPrivateIp(ipOrHost: string): boolean {
+    const cleanHost = ipOrHost.toLowerCase().trim();
+    return (
+      cleanHost === '127.0.0.1' ||
+      cleanHost === 'localhost' ||
+      cleanHost === '::1' ||
+      cleanHost === '0.0.0.0' ||
+      cleanHost.startsWith('10.') ||
+      cleanHost.startsWith('192.168.') ||
+      /^172\.(1[6-9]|2[0-9]|3[0-1])\./.test(cleanHost)
+    );
   }
 
   private normalizeUrl(url: string): string {
