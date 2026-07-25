@@ -8,12 +8,13 @@ datasource db {
 }
 
 model ScanHistory {
-  id        String   @id @default(uuid())
-  targetUrl String
-  score     Int
-  grade     String
-  ssl       Json
-  headers   Json
-  dns       Json
-  scannedAt DateTime @default(now())
+  id          String   @id @default(uuid())
+  targetUrl   String
+  score       Int
+  grade       String
+  ssl         Json
+  headers     Json
+  dns         Json
+  fingerprint Json?    // 👈 تم إضافة الحقل هنا
+  scannedAt   DateTime @default(now())
 }
