@@ -958,37 +958,38 @@ export default function Home() {
             </div>
 
             {/* ── Recommendations ── */}
-            {Array.isArray(result.recommendations) && result.recommendations.length > 0 && (
-              <div className="glass-strong rounded-3xl p-8 hover-glow">
-                <div className="flex items-center gap-3 mb-6">
-                  <div className="w-10 h-10 bg-gradient-to-br from-yellow-500/20 to-orange-500/20 rounded-xl flex items-center justify-center">
-                    <Award className="w-5 h-5 text-yellow-400" />
-                  </div>
-                  <div>
-                    <h3 className="text-lg font-bold text-white">
-                      Recommendations
-                    </h3>
-                    <p className="text-xs text-slate-500">
-                      Fixes to improve this security score
-                    </p>
-                  </div>
-                </div>
-                <ul className="space-y-3">
-                  {result.recommendations.map((rec, idx) => (
-                    <li
-                      key={idx}
-                      className="flex items-start gap-3 bg-yellow-500/5 border border-yellow-500/10 rounded-2xl p-4 text-sm text-slate-300"
-                    >
-                      <AlertCircle className="w-4 h-4 text-yellow-400 flex-shrink-0 mt-0.5" />
-                      <span>{rec}</span>
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            )}
-          </section>
-        )}
+{Array.isArray(result.recommendations) && result.recommendations.length > 0 && (
+  <div className="glass-strong rounded-3xl p-8 hover-glow">
+    <div className="flex items-center gap-3 mb-6">
+      <div className="w-10 h-10 bg-gradient-to-br from-yellow-500/20 to-orange-500/20 rounded-xl flex items-center justify-center">
+        <Award className="w-5 h-5 text-yellow-400" />
+      </div>
+      <div>
+        <h3 className="text-lg font-bold text-white">
+          Recommendations
+        </h3>
+        <p className="text-xs text-slate-500">
+          Fixes to improve this security score
+        </p>
+      </div>
+    </div>
+    <ul className="space-y-3">
+      {result.recommendations.map((rec, idx) => (
+        <li
+          key={idx}
+          className="flex items-start gap-3 bg-yellow-500/5 border border-yellow-500/10 rounded-2xl p-4 text-sm text-slate-300"
+        >
+          <AlertCircle className="w-4 h-4 text-yellow-400 flex-shrink-0 mt-0.5" />
+          <span>{rec}</span>
+        </li>
+      ))}
+    </ul>
+  </div>
+)}
+```[cite: 1]
 
+### نصيحة للاختبار الفوري:
+لكي ترى التوصيات تظهر بنفسك، قم بفحص موقع تجريبي **غير مفعّل عليه** شهادة SSL سليمة أو تنقصه هيدرز الحماية (Security Headers)، وسترى التوصيات تظهر فوراً داخل الواجهة بشكل مرتب ونظامي[cite: 1].
         {/* ═══════ History ═══════ */}
         {history.length > 0 && (
           <section className="mt-12 glass-strong rounded-3xl p-8 hover-glow animate-fade-in-up">
