@@ -103,6 +103,7 @@ function CompanyProfileForm({
 }) {
   const { user } = useUser();
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const [profile, setProfile] = useState<CompanyProfile>({
     companyName: '',
     industry: '',
@@ -184,57 +185,100 @@ function CompanyProfileForm({
       if (res.data) {
         setExistingProfile(res.data);
         setProfile(res.data);
-        // If profile exists and this is required, we can auto-complete
         if (isRequired && res.data) {
           onComplete();
         }
       }
     } catch (err) {
-      // Profile doesn't exist yet
       console.log('No existing profile found');
     }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setError(null);
     
     // Validate all required fields
     if (!profile.companyName || !profile.industry || !profile.companySize || 
         !profile.primaryContact || !profile.email || !profile.position || !profile.budgetRange) {
-      alert('Please fill in all required fields (*)');
+      setError('⚠️ Please fill in all required fields (*)');
       return;
     }
 
     setLoading(true);
     
     try {
+      const clerkId = user?.id;
+      if (!clerkId) {
+        setError('⚠️ User not authenticated');
+        setLoading(false);
+        return;
+      }
+
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL;
+      if (!apiUrl) {
+        setError('⚠️ API URL not configured');
+        setLoading(false);
+        return;
+      }
+
       const url = existingProfile 
-        ? `${process.env.NEXT_PUBLIC_API_URL}/company-profile/${user?.id}`
-        : `${process.env.NEXT_PUBLIC_API_URL}/company-profile`;
+        ? `${apiUrl}/company-profile/${clerkId}`
+        : `${apiUrl}/company-profile`;
       
       const method = existingProfile ? 'PUT' : 'POST';
       
+      // Prepare data
+      const data = {
+        clerkId: clerkId,
+        companyName: profile.companyName,
+        industry: profile.industry,
+        companySize: profile.companySize,
+        website: profile.website || '',
+        primaryContact: profile.primaryContact,
+        email: profile.email || user?.emailAddresses?.[0]?.emailAddress || '',
+        phone: profile.phone || '',
+        position: profile.position,
+        securityNeeds: profile.securityNeeds || [],
+        budgetRange: profile.budgetRange,
+        additionalInfo: profile.additionalInfo || '',
+      };
+
+      console.log('Sending profile data:', data);
+
       const response = await axios({
         method,
         url,
-        data: {
-          ...profile,
-          clerkId: user?.id,
-          email: user?.emailAddresses?.[0]?.emailAddress || profile.email
-        }
+        data: data,
+        headers: {
+          'Content-Type': 'application/json',
+        },
       });
 
       if (response.status === 200 || response.status === 201) {
         setExistingProfile(profile);
         setIsEditing(false);
-        onComplete();
         if (!isRequired) {
-          alert('Profile saved successfully!');
+          alert('✅ Profile saved successfully!');
         }
+        onComplete();
+      } else {
+        setError(`⚠️ Failed to save profile: ${response.statusText}`);
       }
-    } catch (err) {
+    } catch (err: any) {
       console.error('Error saving profile:', err);
-      alert('Failed to save company profile. Please try again.');
+      
+      // More detailed error message
+      let errorMessage = '⚠️ Failed to save company profile. ';
+      if (err.response) {
+        errorMessage += `Server responded with: ${err.response.status} - ${err.response.data?.message || err.response.statusText}`;
+        console.error('Response data:', err.response.data);
+      } else if (err.request) {
+        errorMessage += 'No response from server. Please check your connection.';
+      } else {
+        errorMessage += err.message || 'Please try again.';
+      }
+      setError(errorMessage);
     } finally {
       setLoading(false);
     }
@@ -249,7 +293,6 @@ function CompanyProfileForm({
     }));
   };
 
-  // If profile exists and is required, we're done
   if (existingProfile && isRequired) {
     return null;
   }
@@ -278,6 +321,13 @@ function CompanyProfileForm({
           <p className="text-sm font-medium">
             Company profile is required to access all features. This helps us provide better security recommendations.
           </p>
+        </div>
+      )}
+
+      {error && (
+        <div className="mb-6 flex items-center gap-3 text-red-400 bg-red-500/10 border border-red-500/20 rounded-2xl px-5 py-4">
+          <AlertCircle className="w-5 h-5 flex-shrink-0" />
+          <p className="text-sm font-medium">{error}</p>
         </div>
       )}
 
@@ -735,11 +785,16 @@ export default function Home() {
   const [showCompanyProfile, setShowCompanyProfile] = useState(false);
   const [hasProfile, setHasProfile] = useState(false);
   const [isProfileRequired, setIsProfileRequired] = useState(false);
+  const [isCheckingProfile, setIsCheckingProfile] = useState(true);
   const resultRef = useRef<HTMLDivElement>(null);
 
   /* ── Check if user has profile ── */
   const checkProfile = async () => {
-    if (!user?.id) return;
+    setIsCheckingProfile(true);
+    if (!user?.id) {
+      setIsCheckingProfile(false);
+      return;
+    }
     try {
       const res = await axios.get(
         `${process.env.NEXT_PUBLIC_API_URL}/company-profile/${user?.id}`
@@ -754,12 +809,16 @@ export default function Home() {
     } catch (err) {
       setHasProfile(false);
       setIsProfileRequired(true);
+    } finally {
+      setIsCheckingProfile(false);
     }
   };
 
   useEffect(() => {
     if (user?.id) {
       checkProfile();
+    } else {
+      setIsCheckingProfile(false);
     }
   }, [user]);
 
@@ -828,7 +887,6 @@ export default function Home() {
       return;
     }
 
-    // Check if profile is required
     if (isProfileRequired) {
       setError('⚠️ Please complete your company profile first');
       setShowCompanyProfile(true);
@@ -890,10 +948,13 @@ export default function Home() {
   ).length;
 
   // Show loading state while checking profile
-  if (!isLoaded) {
+  if (!isLoaded || isCheckingProfile) {
     return (
       <main className="min-h-screen bg-[#030712] text-slate-100 relative flex items-center justify-center">
-        <div className="w-12 h-12 border-2 border-blue-500/30 border-t-blue-500 rounded-full animate-spin" />
+        <div className="text-center">
+          <div className="w-16 h-16 border-4 border-blue-500/30 border-t-blue-500 rounded-full animate-spin mx-auto mb-4" />
+          <p className="text-slate-400">Loading...</p>
+        </div>
       </main>
     );
   }
