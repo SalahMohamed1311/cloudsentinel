@@ -33,6 +33,7 @@ import {
   Radio,
   Building2,
   Edit,
+  X,
 } from 'lucide-react';
 
 /* ───────── types ───────── */
@@ -94,9 +95,11 @@ interface ScanResponse {
 
 /* ───────── Company Profile Component ───────── */
 function CompanyProfileForm({ 
-  onComplete 
+  onComplete,
+  isRequired = false
 }: { 
-  onComplete: () => void 
+  onComplete: () => void;
+  isRequired?: boolean;
 }) {
   const { user } = useUser();
   const [loading, setLoading] = useState(false);
@@ -181,6 +184,10 @@ function CompanyProfileForm({
       if (res.data) {
         setExistingProfile(res.data);
         setProfile(res.data);
+        // If profile exists and this is required, we can auto-complete
+        if (isRequired && res.data) {
+          onComplete();
+        }
       }
     } catch (err) {
       // Profile doesn't exist yet
@@ -190,6 +197,14 @@ function CompanyProfileForm({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    // Validate all required fields
+    if (!profile.companyName || !profile.industry || !profile.companySize || 
+        !profile.primaryContact || !profile.email || !profile.position || !profile.budgetRange) {
+      alert('Please fill in all required fields (*)');
+      return;
+    }
+
     setLoading(true);
     
     try {
@@ -213,6 +228,9 @@ function CompanyProfileForm({
         setExistingProfile(profile);
         setIsEditing(false);
         onComplete();
+        if (!isRequired) {
+          alert('Profile saved successfully!');
+        }
       }
     } catch (err) {
       console.error('Error saving profile:', err);
@@ -231,110 +249,43 @@ function CompanyProfileForm({
     }));
   };
 
-  if (existingProfile && !isEditing) {
-    return (
-      <div className="glass-strong rounded-3xl p-8 hover-glow animate-fade-in-up">
-        <div className="flex items-center justify-between mb-6">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-gradient-to-br from-emerald-500/20 to-green-500/20 rounded-xl flex items-center justify-center">
-              <Building2 className="w-5 h-5 text-emerald-400" />
-            </div>
-            <div>
-              <h3 className="text-lg font-bold text-white">Company Profile</h3>
-              <p className="text-xs text-slate-500">Your organization's security information</p>
-            </div>
-          </div>
-          <button
-            onClick={() => setIsEditing(true)}
-            className="glass hover:bg-white/10 text-blue-400 font-semibold px-4 py-2 rounded-xl transition-all text-sm flex items-center gap-2"
-          >
-            <Edit className="w-4 h-4" />
-            Edit Profile
-          </button>
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <div className="space-y-4">
-            <div className="bg-white/5 rounded-xl p-4">
-              <p className="text-xs text-slate-500">Company Name</p>
-              <p className="text-white font-semibold">{existingProfile.companyName || 'Not provided'}</p>
-            </div>
-            <div className="bg-white/5 rounded-xl p-4">
-              <p className="text-xs text-slate-500">Industry</p>
-              <p className="text-white font-semibold">{existingProfile.industry || 'Not provided'}</p>
-            </div>
-            <div className="bg-white/5 rounded-xl p-4">
-              <p className="text-xs text-slate-500">Company Size</p>
-              <p className="text-white font-semibold">{existingProfile.companySize || 'Not provided'}</p>
-            </div>
-            <div className="bg-white/5 rounded-xl p-4">
-              <p className="text-xs text-slate-500">Budget Range</p>
-              <p className="text-white font-semibold">{existingProfile.budgetRange || 'Not provided'}</p>
-            </div>
-          </div>
-          <div className="space-y-4">
-            <div className="bg-white/5 rounded-xl p-4">
-              <p className="text-xs text-slate-500">Primary Contact</p>
-              <p className="text-white font-semibold">{existingProfile.primaryContact || 'Not provided'}</p>
-            </div>
-            <div className="bg-white/5 rounded-xl p-4">
-              <p className="text-xs text-slate-500">Email</p>
-              <p className="text-white font-semibold">{existingProfile.email || 'Not provided'}</p>
-            </div>
-            <div className="bg-white/5 rounded-xl p-4">
-              <p className="text-xs text-slate-500">Position</p>
-              <p className="text-white font-semibold">{existingProfile.position || 'Not provided'}</p>
-            </div>
-            <div className="bg-white/5 rounded-xl p-4">
-              <p className="text-xs text-slate-500">Security Needs</p>
-              <div className="flex flex-wrap gap-2 mt-2">
-                {existingProfile.securityNeeds?.length > 0 ? (
-                  existingProfile.securityNeeds.map(need => (
-                    <span key={need} className="text-xs bg-blue-500/20 text-blue-400 px-3 py-1 rounded-full">
-                      {need}
-                    </span>
-                  ))
-                ) : (
-                  <span className="text-slate-400 text-sm">No specific needs listed</span>
-                )}
-              </div>
-            </div>
-          </div>
-        </div>
-        
-        {existingProfile.additionalInfo && (
-          <div className="mt-4 bg-white/5 rounded-xl p-4">
-            <p className="text-xs text-slate-500">Additional Information</p>
-            <p className="text-white mt-1">{existingProfile.additionalInfo}</p>
-          </div>
-        )}
-      </div>
-    );
+  // If profile exists and is required, we're done
+  if (existingProfile && isRequired) {
+    return null;
   }
 
   return (
-    <div className="glass-strong rounded-3xl p-8 hover-glow animate-fade-in-up">
+    <div className="glass-strong rounded-3xl p-8 hover-glow animate-fade-in-up max-w-4xl mx-auto">
       <div className="flex items-center gap-3 mb-8">
-        <div className="w-10 h-10 bg-gradient-to-br from-emerald-500/20 to-green-500/20 rounded-xl flex items-center justify-center">
-          <Building2 className="w-5 h-5 text-emerald-400" />
+        <div className="w-12 h-12 bg-gradient-to-br from-emerald-500/20 to-green-500/20 rounded-xl flex items-center justify-center">
+          <Building2 className="w-6 h-6 text-emerald-400" />
         </div>
         <div>
-          <h3 className="text-lg font-bold text-white">
-            {existingProfile ? 'Edit Company Profile' : 'Company Profile'}
+          <h3 className="text-2xl font-bold text-white">
+            {isRequired ? 'Complete Your Company Profile' : 'Company Profile'}
           </h3>
-          <p className="text-xs text-slate-500">
-            {existingProfile 
-              ? 'Update your organization\'s security information' 
-              : 'Help us understand your security needs'}
+          <p className="text-sm text-slate-400">
+            {isRequired 
+              ? 'Please provide your company details to continue using CloudSentinel' 
+              : 'Update your organization\'s security information'}
           </p>
         </div>
       </div>
+
+      {isRequired && (
+        <div className="mb-6 flex items-center gap-3 text-yellow-400 bg-yellow-500/10 border border-yellow-500/20 rounded-2xl px-5 py-4">
+          <AlertCircle className="w-5 h-5 flex-shrink-0" />
+          <p className="text-sm font-medium">
+            Company profile is required to access all features. This helps us provide better security recommendations.
+          </p>
+        </div>
+      )}
 
       <form onSubmit={handleSubmit} className="space-y-6">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <div>
             <label className="text-sm font-semibold text-slate-300 block mb-2">
-              Company Name *
+              Company Name <span className="text-red-400">*</span>
             </label>
             <input
               type="text"
@@ -348,7 +299,7 @@ function CompanyProfileForm({
 
           <div>
             <label className="text-sm font-semibold text-slate-300 block mb-2">
-              Industry *
+              Industry <span className="text-red-400">*</span>
             </label>
             <select
               value={profile.industry}
@@ -365,7 +316,7 @@ function CompanyProfileForm({
 
           <div>
             <label className="text-sm font-semibold text-slate-300 block mb-2">
-              Company Size *
+              Company Size <span className="text-red-400">*</span>
             </label>
             <select
               value={profile.companySize}
@@ -395,7 +346,7 @@ function CompanyProfileForm({
 
           <div>
             <label className="text-sm font-semibold text-slate-300 block mb-2">
-              Primary Contact *
+              Primary Contact <span className="text-red-400">*</span>
             </label>
             <input
               type="text"
@@ -409,7 +360,7 @@ function CompanyProfileForm({
 
           <div>
             <label className="text-sm font-semibold text-slate-300 block mb-2">
-              Email *
+              Email <span className="text-red-400">*</span>
             </label>
             <input
               type="email"
@@ -436,7 +387,7 @@ function CompanyProfileForm({
 
           <div>
             <label className="text-sm font-semibold text-slate-300 block mb-2">
-              Position/Title *
+              Position/Title <span className="text-red-400">*</span>
             </label>
             <input
               type="text"
@@ -477,7 +428,7 @@ function CompanyProfileForm({
 
         <div>
           <label className="text-sm font-semibold text-slate-300 block mb-2">
-            Budget Range *
+            Budget Range <span className="text-red-400">*</span>
           </label>
           <select
             value={profile.budgetRange}
@@ -509,33 +460,20 @@ function CompanyProfileForm({
           <button
             type="submit"
             disabled={loading}
-            className="flex-1 bg-gradient-to-r from-emerald-600 to-green-600 hover:from-emerald-500 hover:to-green-500 text-white font-bold px-8 py-3 rounded-2xl transition-all shadow-lg shadow-emerald-600/25 hover:shadow-emerald-500/40 flex items-center justify-center gap-3"
+            className="flex-1 bg-gradient-to-r from-emerald-600 to-green-600 hover:from-emerald-500 hover:to-green-500 text-white font-bold px-8 py-4 rounded-2xl transition-all shadow-lg shadow-emerald-600/25 hover:shadow-emerald-500/40 flex items-center justify-center gap-3 text-lg"
           >
             {loading ? (
               <>
-                <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                <div className="w-6 h-6 border-2 border-white/30 border-t-white rounded-full animate-spin" />
                 <span>Saving...</span>
               </>
             ) : (
               <>
-                <CheckCircle className="w-5 h-5" />
-                <span>{existingProfile ? 'Update Profile' : 'Save Profile'}</span>
+                <CheckCircle className="w-6 h-6" />
+                <span>{isRequired ? 'Complete Profile & Continue' : 'Save Profile'}</span>
               </>
             )}
           </button>
-          
-          {existingProfile && (
-            <button
-              type="button"
-              onClick={() => {
-                setProfile(existingProfile);
-                setIsEditing(false);
-              }}
-              className="px-8 py-3 rounded-2xl bg-white/5 border border-white/10 text-slate-400 hover:text-white hover:bg-white/10 transition-all"
-            >
-              Cancel
-            </button>
-          )}
         </div>
       </form>
     </div>
@@ -785,7 +723,7 @@ function DashboardPage() {
 /*  MAIN COMPONENT                        */
 /* ═══════════════════════════════════════ */
 export default function Home() {
-  const { isSignedIn, user } = useUser();
+  const { isSignedIn, user, isLoaded } = useUser();
   const { signOut } = useClerk();
   const [url, setUrl] = useState('');
   const [loading, setLoading] = useState(false);
@@ -795,7 +733,35 @@ export default function Home() {
   const [scanProgress, setScanProgress] = useState(0);
   const [showDashboard, setShowDashboard] = useState(false);
   const [showCompanyProfile, setShowCompanyProfile] = useState(false);
+  const [hasProfile, setHasProfile] = useState(false);
+  const [isProfileRequired, setIsProfileRequired] = useState(false);
   const resultRef = useRef<HTMLDivElement>(null);
+
+  /* ── Check if user has profile ── */
+  const checkProfile = async () => {
+    if (!user?.id) return;
+    try {
+      const res = await axios.get(
+        `${process.env.NEXT_PUBLIC_API_URL}/company-profile/${user?.id}`
+      );
+      if (res.data) {
+        setHasProfile(true);
+        setIsProfileRequired(false);
+      } else {
+        setHasProfile(false);
+        setIsProfileRequired(true);
+      }
+    } catch (err) {
+      setHasProfile(false);
+      setIsProfileRequired(true);
+    }
+  };
+
+  useEffect(() => {
+    if (user?.id) {
+      checkProfile();
+    }
+  }, [user]);
 
   /* ── history ── */
   const fetchHistory = async () => {
@@ -862,6 +828,13 @@ export default function Home() {
       return;
     }
 
+    // Check if profile is required
+    if (isProfileRequired) {
+      setError('⚠️ Please complete your company profile first');
+      setShowCompanyProfile(true);
+      return;
+    }
+
     if (!url) return;
     setLoading(true);
     setError(null);
@@ -916,6 +889,43 @@ export default function Home() {
     (h: any) => h?.present || h?.data?.present,
   ).length;
 
+  // Show loading state while checking profile
+  if (!isLoaded) {
+    return (
+      <main className="min-h-screen bg-[#030712] text-slate-100 relative flex items-center justify-center">
+        <div className="w-12 h-12 border-2 border-blue-500/30 border-t-blue-500 rounded-full animate-spin" />
+      </main>
+    );
+  }
+
+  // Show profile form if required
+  if (isSignedIn && isProfileRequired) {
+    return (
+      <main className="min-h-screen bg-[#030712] text-slate-100 relative">
+        <ParticleBackground />
+        <div className="relative z-10 max-w-7xl mx-auto px-4 md:px-8 py-12">
+          <div className="text-center mb-8">
+            <div className="flex items-center justify-center gap-3 mb-4">
+              <div className="w-16 h-16 bg-gradient-to-br from-blue-500 to-purple-600 rounded-2xl flex items-center justify-center shadow-lg shadow-blue-500/25">
+                <Shield className="w-8 h-8 text-white" />
+              </div>
+            </div>
+            <h1 className="text-3xl font-bold gradient-text">CloudSentinel</h1>
+            <p className="text-slate-400 mt-2">Complete your profile to get started</p>
+          </div>
+          <CompanyProfileForm 
+            onComplete={() => {
+              setHasProfile(true);
+              setIsProfileRequired(false);
+              setShowCompanyProfile(false);
+            }}
+            isRequired={true}
+          />
+        </div>
+      </main>
+    );
+  }
+
   return (
     <main className="min-h-screen bg-[#030712] text-slate-100 relative">
       <ParticleBackground />
@@ -954,19 +964,23 @@ export default function Home() {
             <div className="flex items-center gap-3">
               {isSignedIn ? (
                 <>
-                  <button
-                    onClick={() => setShowCompanyProfile(!showCompanyProfile)}
-                    className="text-xs font-semibold text-slate-300 hover:text-white transition px-3 py-1.5 rounded-lg bg-white/5 hover:bg-white/10 flex items-center gap-2"
-                  >
-                    <Building2 className="w-3.5 h-3.5" />
-                    {showCompanyProfile ? 'Hide' : 'Company Profile'}
-                  </button>
-                  <button
-                    onClick={() => setShowDashboard(!showDashboard)}
-                    className="text-xs font-semibold text-slate-300 hover:text-white transition px-3 py-1.5 rounded-lg bg-white/5 hover:bg-white/10"
-                  >
-                    {showDashboard ? 'Hide' : 'Dashboard'}
-                  </button>
+                  {hasProfile && (
+                    <>
+                      <button
+                        onClick={() => setShowCompanyProfile(!showCompanyProfile)}
+                        className="text-xs font-semibold text-slate-300 hover:text-white transition px-3 py-1.5 rounded-lg bg-white/5 hover:bg-white/10 flex items-center gap-2"
+                      >
+                        <Building2 className="w-3.5 h-3.5" />
+                        {showCompanyProfile ? 'Hide' : 'Company Profile'}
+                      </button>
+                      <button
+                        onClick={() => setShowDashboard(!showDashboard)}
+                        className="text-xs font-semibold text-slate-300 hover:text-white transition px-3 py-1.5 rounded-lg bg-white/5 hover:bg-white/10"
+                      >
+                        {showDashboard ? 'Hide' : 'Dashboard'}
+                      </button>
+                    </>
+                  )}
                   <UserButton />
                 </>
               ) : (
@@ -980,12 +994,14 @@ export default function Home() {
           </div>
         </nav>
 
-        {/* ── Company Profile ── */}
-        {showCompanyProfile && isSignedIn && (
+        {/* ── Company Profile (Optional View) ── */}
+        {showCompanyProfile && isSignedIn && hasProfile && (
           <CompanyProfileForm 
             onComplete={() => {
-              console.log('Profile saved successfully!');
+              checkProfile();
+              setShowCompanyProfile(false);
             }}
+            isRequired={false}
           />
         )}
 
@@ -1041,6 +1057,13 @@ export default function Home() {
               </div>
             )}
 
+            {isSignedIn && isProfileRequired && (
+              <div className="mb-4 flex items-center gap-3 text-yellow-400 bg-yellow-500/10 border border-yellow-500/20 rounded-2xl px-5 py-4 animate-scale-in">
+                <AlertCircle className="w-5 h-5 flex-shrink-0" />
+                <p className="text-sm font-medium">⚠️ Please complete your company profile to start scanning</p>
+              </div>
+            )}
+
             <form onSubmit={handleScan} className="space-y-4">
               <label className="text-sm font-semibold text-slate-300 flex items-center gap-2 mb-2">
                 <Target className="w-4 h-4 text-blue-400" />
@@ -1054,13 +1077,13 @@ export default function Home() {
                     placeholder={isSignedIn ? "e.g. github.com, google.com" : "🔒 Sign in first"}
                     value={url}
                     onChange={(e) => setUrl(e.target.value)}
-                    disabled={!isSignedIn}
+                    disabled={!isSignedIn || isProfileRequired}
                     className="w-full bg-white/5 border border-white/10 text-white rounded-2xl pl-12 pr-4 py-4 focus:outline-none focus:ring-2 focus:ring-blue-500/40 focus:border-blue-500/40 transition-all placeholder:text-slate-600 font-mono text-sm disabled:opacity-50 disabled:cursor-not-allowed"
                   />
                 </div>
                 <button
                   type="submit"
-                  disabled={loading || !url || !isSignedIn}
+                  disabled={loading || !url || !isSignedIn || isProfileRequired}
                   className="relative bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 hover:from-blue-500 hover:via-indigo-500 hover:to-purple-500 disabled:opacity-40 disabled:cursor-not-allowed text-white font-bold px-10 py-4 rounded-2xl transition-all shadow-lg shadow-blue-600/25 hover:shadow-blue-500/40 flex items-center justify-center gap-3 min-w-[160px] overflow-hidden group"
                 >
                   {loading ? (
@@ -1071,7 +1094,7 @@ export default function Home() {
                   ) : (
                     <>
                       <Scan className="w-5 h-5 group-hover:rotate-12 transition-transform" />
-                      <span>{isSignedIn ? 'Scan Now' : '🔒 Sign in'}</span>
+                      <span>{isSignedIn ? (isProfileRequired ? 'Profile Required' : 'Scan Now') : '🔒 Sign in'}</span>
                       <ArrowRight className="w-4 h-4 opacity-0 group-hover:opacity-100 -translate-x-2 group-hover:translate-x-0 transition-all" />
                     </>
                   )}
